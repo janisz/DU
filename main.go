@@ -2,20 +2,18 @@ package main
 
 import (
 	"fmt"
-	"golang.org/x/net/html"
 	"io"
-	"os"
-	"strconv"
-
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/clientcredentials"
-
 	"github.com/dghubble/go-twitter/twitter"
+	"github.com/dghubble/oauth1"
+
+	"golang.org/x/net/html"
 )
 
 const url = "https://dziennikustaw.gov.pl"
@@ -23,14 +21,10 @@ const url = "https://dziennikustaw.gov.pl"
 func main() {
 	log.Println("Dziennik Ustaw")
 
-	// oauth2 configures a client that uses app credentials to keep a fresh token
-	config := &clientcredentials.Config{
-		ClientID:     os.Getenv("ClientID"),
-		ClientSecret: os.Getenv("ClientSecret"),
-		TokenURL:     "https://api.twitter.com/oauth2/token",
-	}
+	config := oauth1.NewConfig(os.Getenv("consumerKey"), os.Getenv("consumerSecret"))
+	token := oauth1.NewToken(os.Getenv("accessToken"), os.Getenv("accessSecret"))
 	// http.Client will automatically authorize Requests
-	httpClient := config.Client(oauth2.NoContext)
+	httpClient := config.Client(oauth1.NoContext, token)
 
 	// Twitter client
 	client := twitter.NewClient(httpClient)
@@ -45,17 +39,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%#v", t)
 
-	lastTweetedId := 2140
+	lastTweetedId := 0
 	for _, tweet := range t.Statuses {
+		log.Println(tweet.ID, tweet.FullText)
 		i := getIdFromTweet(tweet.FullText)
 		if i > lastTweetedId {
 			lastTweetedId = i
 		}
 	}
+	log.Println("Pos:", lastTweetedId)
 
 	year := time.Now().Year()
+	log.Println("Year", year)
 	for {
 		lastTweetedId++
 		r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
@@ -71,7 +67,12 @@ func main() {
 			return
 		}
 		tweet := prepareTweet(year, lastTweetedId, title)
-		fmt.Println(tweet)
+		log.Println(tweet)
+		t, _, err := client.Statuses.Update(tweet, nil)
+		log.Println(t.ID, t.Text)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -121,7 +122,7 @@ var handles = map[string]string{
 	"Ministra Spraw Zagranicznych":                "@MSZ_RP",
 	"Ministra Spraw Wewnętrznych i Administracji": "@MSWiA_gov_PL",
 	"Ministra Edukacji Narodowej":                 "@MEN_gov_PL",
-	"Ministra Nauki i Szkolnictwa Wyższego":       "@NAUKA_gov_PL",
+	"Ministra Nauki i Szkolnictwa Wyższego":       "@Nauka_gov_PL",
 	"Ministra Kultury i Dziedzictwa Narodowego":   "@MKiDN_gov_PL",
 	"Ministra Rolnictwa i Rozwoju Wsi":            "@MRiRW_gov_PL",
 }

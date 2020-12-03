@@ -31,5 +31,7 @@ jobs:
       - name: Run boot
         run: go run main.go
         env:
-          ClientID: ${{ secrets.ClientID }}
-          ClientSecret: ${{ secrets.ClientSecret }}
+          consumerKey: ${{ secrets.consumerKey }}
+          consumerSecret: ${{ secrets.consumerSecret }}
+          accessToken: ${{ secrets.accessToken }}
+          accessSecret: ${{ secrets.accessSecret }}
