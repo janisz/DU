@@ -28,7 +28,9 @@ func main() {
 	long := 21.02839
 	truthy := true
 
-	log.Println("Dziennik Ustaw")
+	log.SetLevel(log.DebugLevel)
+
+	log.Info("Dziennik Ustaw")
 
 	config := oauth1.NewConfig(os.Getenv("consumerKey"), os.Getenv("consumerSecret"))
 	token := oauth1.NewToken(os.Getenv("accessToken"), os.Getenv("accessSecret"))
@@ -44,13 +46,13 @@ func main() {
 		TweetMode:          "extended",
 	})
 	if err != nil {
-		log.Fatal(err)
+		log.WithError(err).Fatal("Could not get tweets from timeline")
 	}
 
 	lastTweetedId := 0
 	lastTweetedYear := 0
 	for _, tweet := range tweets {
-		log.Println(tweet.ID, tweet.FullText)
+		log.WithField("ID", tweet.ID).Debug(tweet.FullText)
 		y, i := getIdFromTweet(tweet.FullText)
 		if i > lastTweetedId {
 			lastTweetedId = i
@@ -64,23 +66,21 @@ func main() {
 		lastTweetedId = 0
 	}
 
-	log.Println("Pos:", lastTweetedId)
-	log.Println("Year:", lastTweetedYear)
-	log.Println("Year", year)
+	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
 	for {
 		lastTweetedId++
 
 		tweetText := getTweetText(err, year, lastTweetedId)
 		if tweetText == "" {
-			log.Println("No data for ", lastTweetedId)
+			log.Info("No data for ", lastTweetedId)
 			return
 		}
 		mediaIds, err := uploadImages(year, lastTweetedId, client)
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Fatal("Could not upload images")
 		}
-		log.Println(tweetText)
+		log.WithField("Text", tweetText).Info("Publishing...")
 
 		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
 			Status:             "",
@@ -94,9 +94,9 @@ func main() {
 			MediaIds:           mediaIds,
 			TweetMode:          "",
 		})
-		log.Println(t.ID, t.Text)
+		log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
 		if err != nil {
-			log.Fatal(err)
+			log.WithError(err).Fatal("Could not publish tweet")
 		}
 	}
 }
@@ -104,10 +104,10 @@ func main() {
 func getTweetText(err error, year int, lastTweetedId int) string {
 	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
 	if err != nil {
-		log.Fatal(err)
+		log.WithError(err).Fatal("Could not get data from Dz.U.")
 	}
 	if r.StatusCode != http.StatusOK {
-		log.Fatal(r.Status)
+		log.WithField("Status", r.Status).Fatal("Unexpected status")
 	}
 	title := getTitleFromPage(r.Body)
 	if title == "" {
@@ -128,10 +128,10 @@ func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64,
 	pages, err := convertPDFToJpgs(r.Body)
 	r.Body.Close()
 
-	log.Printf("Pages to upload: %v", len(pages))
 	if err != nil {
 		return nil, err
 	}
+	log.Info("Pages to upload: ", len(pages))
 	mediaIds := make([]int64, 0, len(pages))
 	for _, p := range pages {
 		resp, _, err := client.Media.Upload(p, "image/jpeg")
@@ -139,21 +139,21 @@ func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64,
 			return nil, err
 		}
 		if resp.ProcessingInfo != nil {
-			log.Printf("%#v", resp)
+			log.WithField("MediaID", resp.MediaID).Debug("Still processing: %#v", resp.ProcessingInfo)
 			for {
-				time.Sleep(10 * time.Millisecond)
-				log.Printf("Checking upload status %d", resp.MediaID)
+				time.Sleep(100 * time.Millisecond)
+				log.WithField("MediaID", resp.MediaID).Debug("Checking upload status %d", resp.MediaID)
 				r, _, err := client.Media.Status(resp.MediaID)
 				if err != nil {
 					return nil, err
 				}
-				if r == nil {
+				if r.ProcessingInfo == nil {
 					break
 				}
-				log.Printf("Still processing: %#v", r)
+				log.WithField("MediaID", resp.MediaID).Debug("Still processing: %#v", r.ProcessingInfo)
 			}
 		}
-		log.Printf("Upload Succesful")
+		log.WithField("MediaID", resp.MediaID).Debug("Upload Succesful")
 		mediaIds = append(mediaIds, resp.MediaID)
 	}
 	return mediaIds, nil
@@ -244,18 +244,18 @@ func trimTitle(title string) string {
 func getIdFromTweet(s string) (year, id int) {
 	a := strings.Split(strings.Split(s, "\n")[0], " ")
 	if len(a) < 4 {
-		log.Printf("Parsing %s not enought tokens", s)
+		log.Warn("Parsing %s not enough tokens", s)
 		return 0, 0
 	}
 	i := strings.Trim(a[3], "\n")
 	id, err := strconv.Atoi(i)
 	if err != nil {
-		log.Printf("Parsing %s got %s", s, err)
+		log.Warn("Parsing %s got %s", s, err)
 		return 0, 0
 	}
 	year, err = strconv.Atoi(a[1])
 	if err != nil {
-		log.Printf("Parsing %s got %s", s, err)
+		log.Warn("Parsing %s got %s", s, err)
 		return 0, 0
 	}
 	return year, id
@@ -268,7 +268,7 @@ func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
 	}
 	defer doc.Close()
 
-	log.Printf("Pages: %d\n%v", doc.NumPage(), doc.Metadata())
+	log.Debug("Pages: ", doc.NumPage())
 	if doc.NumPage() > 4 {
 		return nil, nil
 	}
