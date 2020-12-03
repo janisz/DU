@@ -110,3 +110,14 @@ func Test_getTitleFromPage(t *testing.T) {
 		})
 	}
 }
+
+func Test_convertPDFToPng(t *testing.T) {
+	file, _ := os.Open("testdata/D2020000000101.pdf")
+	out, err := convertPDFToJpgs(file)
+	if err != nil {
+		t.Errorf("Got %v", err)
+	}
+	if len(out) != 2 {
+		t.Errorf("Got %v", out)
+	}
+}

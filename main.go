@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image/jpeg"
 	"io"
 	"log"
 	"net/http"
@@ -12,6 +14,8 @@ import (
 
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
+
+	"github.com/gen2brain/go-fitz"
 
 	"golang.org/x/net/html"
 )
@@ -75,9 +79,48 @@ func main() {
 			log.Println("No data for ", lastTweetedId)
 			return
 		}
-		tweet := prepareTweet(year, lastTweetedId, title)
-		log.Println(tweet)
-		t, _, err := client.Statuses.Update(tweet, nil)
+		tweetText := prepareTweet(year, lastTweetedId, title)
+		log.Println(tweetText)
+
+		url := pdfUrl(year, lastTweetedId)
+		r, err = http.DefaultClient.Get(url)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if r.StatusCode != http.StatusOK {
+			log.Fatal(r)
+		}
+		pages, err := convertPDFToJpgs(r.Body)
+		r.Body.Close()
+
+		log.Printf("Pages: %v", len(pages))
+		if err != nil {
+			log.Fatal(err)
+		}
+		mediaIds := make([]int64, 0, len(pages))
+		for _, p := range pages {
+			resp, _, err := client.Media.Upload(p, "image/jpeg")
+			if err != nil {
+				log.Fatal(resp)
+			}
+			mediaIds = append(mediaIds, resp.MediaID)
+		}
+
+		lat := 52.22548
+		long := 21.02839
+		truthy := true
+		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
+			Status:             "",
+			InReplyToStatusID:  0,
+			PossiblySensitive:  nil,
+			Lat:                &lat,
+			Long:               &long,
+			PlaceID:            "",
+			DisplayCoordinates: &truthy,
+			TrimUser:           nil,
+			MediaIds:           mediaIds,
+			TweetMode:          "",
+		})
 		log.Println(t.ID, t.Text)
 		if err != nil {
 			log.Fatal(err)
@@ -116,8 +159,12 @@ func prepareTweet(year, id int, title string) string {
 	return strings.Join([]string{
 		fmt.Sprintf("Dz.U. %d poz. %d #DziennikUstaw", year, id), // 37 chars (Dz.U. YYYY poz. XXXX #DziennikUstaw\n)
 		trimTitle(title), // < 280-37-23 ~ 200 (1 for new line)
-		fmt.Sprintf("%s/D%d%07d01.pdf", url, year, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
+		pdfUrl(year, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
+}
+
+func pdfUrl(year int, id int) string {
+	return fmt.Sprintf("%s/D%d%07d01.pdf", url, year, id)
 }
 
 var handles = map[string]string{
@@ -171,4 +218,37 @@ func getIdFromTweet(s string) (year, id int) {
 		return 0, 0
 	}
 	return year, id
+}
+
+func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
+	doc, err := fitz.NewFromReader(pdf)
+	if err != nil {
+		return nil, err
+	}
+	defer doc.Close()
+
+	log.Printf("Pages: %d\n%v", doc.NumPage(), doc.Metadata())
+	if doc.NumPage() > 4 {
+		return nil, nil
+	}
+
+	result := make([][]byte, 0, doc.NumPage())
+
+	// Extract pages as images
+	for n := 0; n < doc.NumPage(); n++ {
+		img, err := doc.Image(n)
+		if err != nil {
+			return nil, err
+		}
+
+		var b bytes.Buffer
+
+		err = jpeg.Encode(&b, img, &jpeg.Options{Quality: jpeg.DefaultQuality})
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, b.Bytes())
+	}
+	return result, nil
 }
