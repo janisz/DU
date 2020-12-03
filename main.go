@@ -41,17 +41,26 @@ func main() {
 	}
 
 	lastTweetedId := 0
+	lastTweetedYear := 0
 	for _, tweet := range t.Statuses {
 		log.Println(tweet.ID, tweet.FullText)
-		i := getIdFromTweet(tweet.FullText)
+		y, i := getIdFromTweet(tweet.FullText)
 		if i > lastTweetedId {
 			lastTweetedId = i
 		}
+		if y > lastTweetedYear {
+			lastTweetedYear = y
+		}
 	}
-	log.Println("Pos:", lastTweetedId)
-
 	year := time.Now().Year()
+	if year != lastTweetedYear {
+		lastTweetedId = 0
+	}
+
+	log.Println("Pos:", lastTweetedId)
+	log.Println("Year:", lastTweetedYear)
 	log.Println("Year", year)
+
 	for {
 		lastTweetedId++
 		r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
@@ -76,7 +85,7 @@ func main() {
 	}
 }
 
-const MaxTitleLength = 230
+const MaxTitleLength = 200
 
 func getTitleFromPage(body io.ReadCloser) string {
 	z := html.NewTokenizer(body)
@@ -105,8 +114,8 @@ func getTitleFromPage(body io.ReadCloser) string {
 
 func prepareTweet(year, id int, title string) string {
 	return strings.Join([]string{
-		fmt.Sprintf("Dz.U. %d poz. %d", year, id), // 21 chars (Dz.U. YYYY poz. XXXX\n)
-		trimTitle(title), // < 280-21-23 = 235 (1 for new line)
+		fmt.Sprintf("Dz.U. %d poz. %d #DziennikUstaw", year, id), // 37 chars (Dz.U. YYYY poz. XXXX #DziennikUstaw\n)
+		trimTitle(title), // < 280-37-23 ~ 200 (1 for new line)
 		fmt.Sprintf("%s/D%d%07d01.pdf", url, year, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
 }
@@ -116,6 +125,7 @@ var handles = map[string]string{
 	"Ministra Infrastruktury":                     "@MI_gov_PL",
 	"Ministra Sportu":                             "@Sport_gov_PL",
 	"Prezesa Rady Ministrów":                      "@PremierRP",
+	"Prezydenta Rzeczypospolitej Polskiej":        "@PrezydentPL",
 	"Ministra Obrony Narodowej":                   "@MON_gov_PL",
 	"Ministra Finansów":                           "@MF_gov_PL",
 	"Ministra Sprawiedliwości":                    "@MS_gov_PL",
@@ -125,6 +135,10 @@ var handles = map[string]string{
 	"Ministra Nauki i Szkolnictwa Wyższego":       "@Nauka_gov_PL",
 	"Ministra Kultury i Dziedzictwa Narodowego":   "@MKiDN_gov_PL",
 	"Ministra Rolnictwa i Rozwoju Wsi":            "@MRiRW_gov_PL",
+	"Trybunału Konstytucyjnego":                   "@TK_gov_PL",
+	"Sejmu Rzeczypospolitej Polskiej":             "@KancelariaSejmu",
+	"Ministra Edukacji i Nauki":                   "@Nauka_gov_PL",
+	"Ministra Klimatu":                            "@MKiS_gov_PL",
 }
 
 func trimTitle(title string) string {
@@ -139,18 +153,22 @@ func trimTitle(title string) string {
 	return string(runes[:MaxTitleLength-1]) + "…"
 }
 
-func getIdFromTweet(s string) int {
+func getIdFromTweet(s string) (year, id int) {
 	a := strings.Split(strings.Split(s, "\n")[0], " ")
 	if len(a) < 4 {
 		log.Printf("Parsing %s not enought tokens", s)
-		return 0
+		return 0, 0
 	}
 	i := strings.Trim(a[3], "\n")
 	id, err := strconv.Atoi(i)
 	if err != nil {
 		log.Printf("Parsing %s got %s", s, err)
-		return 0
+		return 0, 0
 	}
-	return id
-
+	year, err = strconv.Atoi(a[1])
+	if err != nil {
+		log.Printf("Parsing %s got %s", s, err)
+		return 0, 0
+	}
+	return year, id
 }
