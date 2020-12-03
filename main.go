@@ -44,6 +44,7 @@ func main() {
 		Query:      "-from:Dziennik_Ustaw #DziennikUstaw OR Dziennik Ustaw OR Dz.U.",
 		Lang:       "pl",
 		ResultType: "recent",
+		Since:		time.Now().Add(-24*time.Hour).Format("2006-01-02"),
 		Count:      10,
 		TweetMode:  "extended",
 	})
