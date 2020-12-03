@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image/jpeg"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,11 +17,17 @@ import (
 	"github.com/gen2brain/go-fitz"
 
 	"golang.org/x/net/html"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const url = "https://dziennikustaw.gov.pl"
 
 func main() {
+	lat := 52.22548
+	long := 21.02839
+	truthy := true
+
 	log.Println("Dziennik Ustaw")
 
 	config := oauth1.NewConfig(os.Getenv("consumerKey"), os.Getenv("consumerSecret"))
@@ -33,12 +38,10 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
-	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-		Query:      "(from:Dziennik_Ustaw) filter:links -filter:replies",
-		Lang:       "pl",
-		ResultType: "recent",
-		Count:      1,
-		TweetMode:  "extended",
+	tweets, _, err := client.Timelines.HomeTimeline(&twitter.HomeTimelineParams{
+		Count:              1,
+		ExcludeReplies:     &truthy,
+		TweetMode:          "extended",
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -46,7 +49,7 @@ func main() {
 
 	lastTweetedId := 0
 	lastTweetedYear := 0
-	for _, tweet := range t.Statuses {
+	for _, tweet := range tweets {
 		log.Println(tweet.ID, tweet.FullText)
 		y, i := getIdFromTweet(tweet.FullText)
 		if i > lastTweetedId {
@@ -67,48 +70,18 @@ func main() {
 
 	for {
 		lastTweetedId++
-		r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
-		if err != nil {
-			log.Fatal(err)
-		}
-		if r.StatusCode != http.StatusOK {
-			log.Fatal(r.Status)
-		}
-		title := getTitleFromPage(r.Body)
-		if title == "" {
+
+		tweetText := getTweetText(err, year, lastTweetedId)
+		if tweetText == "" {
 			log.Println("No data for ", lastTweetedId)
 			return
 		}
-		tweetText := prepareTweet(year, lastTweetedId, title)
+		mediaIds, err := uploadImages(year, lastTweetedId, client)
+		if err != nil {
+			log.Fatal(err)
+		}
 		log.Println(tweetText)
 
-		url := pdfUrl(year, lastTweetedId)
-		r, err = http.DefaultClient.Get(url)
-		if err != nil {
-			log.Fatal(err)
-		}
-		if r.StatusCode != http.StatusOK {
-			log.Fatal(r)
-		}
-		pages, err := convertPDFToJpgs(r.Body)
-		r.Body.Close()
-
-		log.Printf("Pages: %v", len(pages))
-		if err != nil {
-			log.Fatal(err)
-		}
-		mediaIds := make([]int64, 0, len(pages))
-		for _, p := range pages {
-			resp, _, err := client.Media.Upload(p, "image/jpeg")
-			if err != nil {
-				log.Fatal(resp)
-			}
-			mediaIds = append(mediaIds, resp.MediaID)
-		}
-
-		lat := 52.22548
-		long := 21.02839
-		truthy := true
 		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
 			Status:             "",
 			InReplyToStatusID:  0,
@@ -126,6 +99,64 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+}
+
+func getTweetText(err error, year int, lastTweetedId int) string {
+	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if r.StatusCode != http.StatusOK {
+		log.Fatal(r.Status)
+	}
+	title := getTitleFromPage(r.Body)
+	if title == "" {
+		return ""
+	}
+	return prepareTweet(year, lastTweetedId, title)
+}
+
+func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64, error) {
+	url := pdfUrl(year, lastTweetedId)
+	r, err := http.DefaultClient.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if r.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf(r.Status)
+	}
+	pages, err := convertPDFToJpgs(r.Body)
+	r.Body.Close()
+
+	log.Printf("Pages to upload: %v", len(pages))
+	if err != nil {
+		return nil, err
+	}
+	mediaIds := make([]int64, 0, len(pages))
+	for _, p := range pages {
+		resp, _, err := client.Media.Upload(p, "image/jpeg")
+		if err != nil {
+			return nil, err
+		}
+		if resp.ProcessingInfo != nil {
+			log.Printf("%#v", resp)
+			for {
+				time.Sleep(10 * time.Millisecond)
+				log.Printf("Checking upload status %d", resp.MediaID)
+				r, _, err := client.Media.Status(resp.MediaID)
+				if err != nil {
+					return nil, err
+				}
+				if r == nil {
+					break
+				}
+				log.Printf("Still processing: %#v", r)
+			}
+		}
+		log.Printf("Upload Succesful")
+		mediaIds = append(mediaIds, resp.MediaID)
+	}
+	return mediaIds, nil
 }
 
 const MaxTitleLength = 200
@@ -190,8 +221,8 @@ var handles = map[string]string{
 
 var emojis = map[string]string{
 	"Obwieszczenie": "📢",
-	"Umowa": "🤝",
-	"Porozumienie": "🤝",
+	"Umowa":         "🤝",
+	"Porozumienie":  "🤝",
 }
 
 func trimTitle(title string) string {
