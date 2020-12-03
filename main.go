@@ -40,10 +40,36 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
+	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+		Query:      "-from:Dziennik_Ustaw #DziennikUstaw OR Dziennik Ustaw OR Dz.U.",
+		Lang:       "pl",
+		ResultType: "recent",
+		Count:      10,
+		TweetMode:  "extended",
+	})
+	if err != nil {
+		log.WithError(err).Fatal("Could not find tweets")
+	}
+	for _, tweet := range t.Statuses {
+		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
+			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
+			WithField("Text", tweet.FullText).Info("Like tweet")
+		if _, ok := os.LookupEnv("DRY"); ok {
+			log.Warn("DRY RUN")
+			continue
+		}
+		liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+		if err != nil {
+			log.WithField("ID", tweet.ID).WithError(err).Warn("Could not like tweet 💔")
+			continue
+		}
+		log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
+	}
+
 	tweets, _, err := client.Timelines.HomeTimeline(&twitter.HomeTimelineParams{
-		Count:              1,
-		ExcludeReplies:     &truthy,
-		TweetMode:          "extended",
+		Count:          1,
+		ExcludeReplies: &truthy,
+		TweetMode:      "extended",
 	})
 	if err != nil {
 		log.WithError(err).Fatal("Could not get tweets from timeline")
@@ -80,8 +106,12 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("Could not upload images")
 		}
-		log.WithField("Text", tweetText).Info("Publishing...")
 
+		if _, ok := os.LookupEnv("DRY"); ok {
+			log.WithField("Text", tweetText).Warn("DRY RUN")
+			continue
+		}
+		log.WithField("Text", tweetText).Info("Publishing...")
 		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
 			Status:             "",
 			InReplyToStatusID:  0,
@@ -133,16 +163,19 @@ func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64,
 	}
 	log.Info("Pages to upload: ", len(pages))
 	mediaIds := make([]int64, 0, len(pages))
+	if _, ok := os.LookupEnv("DRY"); ok {
+		return nil, nil
+	}
 	for _, p := range pages {
 		resp, _, err := client.Media.Upload(p, "image/jpeg")
 		if err != nil {
 			return nil, err
 		}
 		if resp.ProcessingInfo != nil {
-			log.WithField("MediaID", resp.MediaID).Debug("Still processing: %#v", resp.ProcessingInfo)
+			log.WithField("MediaID", resp.MediaID).Debugf("Still processing: %#v", resp.ProcessingInfo)
 			for {
 				time.Sleep(100 * time.Millisecond)
-				log.WithField("MediaID", resp.MediaID).Debug("Checking upload status %d", resp.MediaID)
+				log.WithField("MediaID", resp.MediaID).Debugf("Checking upload status %d", resp.MediaID)
 				r, _, err := client.Media.Status(resp.MediaID)
 				if err != nil {
 					return nil, err
@@ -150,7 +183,7 @@ func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64,
 				if r.ProcessingInfo == nil {
 					break
 				}
-				log.WithField("MediaID", resp.MediaID).Debug("Still processing: %#v", r.ProcessingInfo)
+				log.WithField("MediaID", resp.MediaID).Debugf("Still processing: %#v", r.ProcessingInfo)
 			}
 		}
 		log.WithField("MediaID", resp.MediaID).Debug("Upload Succesful")
@@ -244,18 +277,18 @@ func trimTitle(title string) string {
 func getIdFromTweet(s string) (year, id int) {
 	a := strings.Split(strings.Split(s, "\n")[0], " ")
 	if len(a) < 4 {
-		log.Warn("Parsing %s not enough tokens", s)
+		log.Warnf("Parsing %s not enough tokens", s)
 		return 0, 0
 	}
 	i := strings.Trim(a[3], "\n")
 	id, err := strconv.Atoi(i)
 	if err != nil {
-		log.Warn("Parsing %s got %s", s, err)
+		log.Warnf("Parsing %s got %s", s, err)
 		return 0, 0
 	}
 	year, err = strconv.Atoi(a[1])
 	if err != nil {
-		log.Warn("Parsing %s got %s", s, err)
+		log.Warnf("Parsing %s got %s", s, err)
 		return 0, 0
 	}
 	return year, id
