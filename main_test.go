@@ -58,7 +58,7 @@ func Test_trimTweet(t *testing.T) {
 		},
 		{
 			title: "Obwieszczenie Ministra Zdrowia z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia Ministra Zdrowia w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych zawierających grzyby oraz uprawnień klasyfikatora grzybów i grzyboznawcy",
-			want:  "Obwieszczenie @MZ_gov_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_gov_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środkó…",
+			want:  "📢Obwieszczenie @MZ_gov_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_gov_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środk…",
 		},
 	}
 	for _, tt := range tests {

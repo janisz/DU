@@ -188,11 +188,21 @@ var handles = map[string]string{
 	"Ministra Klimatu":                            "@MKiS_gov_PL",
 }
 
+var emojis = map[string]string{
+	"Obwieszczenie": "📢",
+	"Umowa": "🤝",
+	"Porozumienie": "🤝",
+}
+
 func trimTitle(title string) string {
 	for name, handle := range handles {
 		title = strings.ReplaceAll(title, name, handle)
 	}
-
+	for word, emoji := range emojis {
+		if strings.HasPrefix(title, word) {
+			title = emoji + title
+		}
+	}
 	runes := []rune(title)
 	if len(runes) < MaxTitleLength {
 		return title
