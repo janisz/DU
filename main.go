@@ -40,33 +40,6 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
-	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-		Query:      "-from:Dziennik_Ustaw #DziennikUstaw OR Dziennik Ustaw OR Dz.U.",
-		Lang:       "pl",
-		ResultType: "recent",
-		Since:		time.Now().Add(-24*time.Hour).Format("2006-01-02"),
-		Count:      10,
-		TweetMode:  "extended",
-	})
-	if err != nil {
-		log.WithError(err).Fatal("Could not find tweets")
-	}
-	for _, tweet := range t.Statuses {
-		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
-			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
-			WithField("Text", tweet.FullText).Info("Like tweet")
-		if _, ok := os.LookupEnv("DRY"); ok {
-			log.Warn("DRY RUN")
-			continue
-		}
-		liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
-		if err != nil {
-			log.WithField("ID", tweet.ID).WithError(err).Warn("Could not like tweet 💔")
-			continue
-		}
-		log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
-	}
-
 	tweets, _, err := client.Timelines.HomeTimeline(&twitter.HomeTimelineParams{
 		Count:          1,
 		ExcludeReplies: &truthy,
@@ -76,18 +49,16 @@ func main() {
 		log.WithError(err).Fatal("Could not get tweets from timeline")
 	}
 
-	lastTweetedId := 0
-	lastTweetedYear := 0
-	for _, tweet := range tweets {
-		log.WithField("ID", tweet.ID).Debug(tweet.FullText)
-		y, i := getIdFromTweet(tweet.FullText)
-		if i > lastTweetedId {
-			lastTweetedId = i
-		}
-		if y > lastTweetedYear {
-			lastTweetedYear = y
-		}
+	if len(tweets) < 1 {
+		log.Fatal("No tweets")
 	}
+
+	tweet := tweets[0]
+	log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
+		WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
+		WithField("Text", tweet.FullText).Debug("Latest tweet from timeline")
+	likeTweets(client, tweet.ID)
+	lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.FullText)
 	year := time.Now().Year()
 	if year != lastTweetedYear {
 		lastTweetedId = 0
@@ -129,6 +100,50 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("Could not publish tweet")
 		}
+	}
+}
+
+func likeTweets(client *twitter.Client, sinceId int64) {
+	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
+		UserID:  1334198651141361666,
+		Count:   1,
+		SinceID: sinceId,
+	})
+	if err != nil {
+		log.WithError(err).Error("Could not find tweets")
+		return
+	}
+	if len(likes) < 1 {
+		log.Infof("No likes since last time")
+		return
+	}
+
+	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+		Query:      "-from:Dziennik_Ustaw #DziennikUstaw OR Dziennik Ustaw OR Dz.U.",
+		Lang:       "pl",
+		ResultType: "recent",
+		SinceID:    likes[0].ID,
+		Count:      100,
+		TweetMode:  "extended",
+	})
+	if err != nil {
+		log.WithError(err).Fatal("Could not find tweets")
+	}
+	log.Infof("Found %d tweets to like", len(t.Statuses))
+	for _, tweet := range t.Statuses {
+		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
+			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
+			WithField("Text", tweet.FullText).Info("Like tweet")
+		if _, ok := os.LookupEnv("DRY"); ok {
+			log.Warn("DRY RUN")
+			continue
+		}
+		liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+		if err != nil {
+			log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
+			continue
+		}
+		log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
 	}
 }
 
