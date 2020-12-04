@@ -251,6 +251,7 @@ var handles = map[string]string{
 	"Sejmu Rzeczypospolitej Polskiej":             "@KancelariaSejmu",
 	"Ministra Edukacji i Nauki":                   "@Nauka_gov_PL",
 	"Ministra Klimatu":                            "@MKiS_gov_PL",
+	"Państwowej Komisji Wyborczej":                "@PanstwKomWyb",
 }
 
 var emojis = map[string]string{
