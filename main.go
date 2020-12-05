@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -130,16 +131,58 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 				WithField("Text", tweet.FullText).Info("Like tweet")
 			if _, ok := os.LookupEnv("DRY"); ok {
 				log.Warn("DRY RUN")
+			} else {
+				liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+				if err != nil {
+					log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
+					continue
+				}
+				log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
+			}
+			year, pos := extractActFromTweet(tweet.FullText)
+			if year * pos == 0 {
 				continue
 			}
-			liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+			log.Debugf("Tweet reference Dz.U. %d Poz. %d", year, pos)
+			if year < 2012 {
+				log.Infof("Acts before 2012 are not supported")
+				continue
+			}
+
+
+			tweetText := fmt.Sprintf("@%s %s\n%s", tweet.User.ScreenName, prepareMentions(tweet.Entities.UserMentions), getTweetText(year, pos))
+			if tweetText == "" {
+				log.Info("No data for ", pos)
+				return
+			}
+			mediaIds, err := uploadImages(year, pos, client)
 			if err != nil {
-				log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
+				log.WithError(err).Fatal("Could not upload images")
+			}
+
+			if _, ok := os.LookupEnv("DRY"); ok {
+				log.WithField("Text", tweetText).Warn("DRY RUN")
 				continue
 			}
-			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
+			log.WithField("Text", tweetText).Info("Publishing...")
+			t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
+				InReplyToStatusID:  tweet.ID,
+				MediaIds:           mediaIds,
+			})
+			log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
+			if err != nil {
+				log.WithError(err).Fatal("Could not publish tweet")
+			}
 		}
 	}
+}
+
+func prepareMentions(mentions []twitter.MentionEntity) string {
+	var b strings.Builder
+	for _, menition := range mentions {
+		fmt.Fprintf(&b, "@%s ", menition.ScreenName)
+	}
+	return b.String()
 }
 
 func getTweetText(year int, lastTweetedId int) string {
@@ -337,4 +380,21 @@ func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
 		result = append(result, b.Bytes())
 	}
 	return result, nil
+}
+
+func extractActFromTweet(tweet string) (year, pos int) {
+	r := regexp.MustCompile(`Dz\.\s*U\.\s*z?\s*(?P<year>\d{4})( r\.\s*)?(\s[Pp]oz)?\.(\d+\.)?\s*(?P<pos>\d{1,4})`)
+	match := r.FindStringSubmatch(tweet) // TODO: Find all matches not just first one
+	for i, name := range r.SubexpNames() {
+		if i > len(match) {
+			return year,pos
+		}
+		switch name {
+		case "year":
+			year, _ = strconv.Atoi(match[i])
+		case "pos":
+			pos, _ = strconv.Atoi(match[i])
+		}
+	}
+	return year,pos
 }
