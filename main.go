@@ -57,7 +57,9 @@ func main() {
 	log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
 		WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
 		WithField("Text", tweet.FullText).Debug("Latest tweet from timeline")
+
 	likeTweets(client, tweet.ID)
+
 	lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.FullText)
 	year := time.Now().Year()
 	if year != lastTweetedYear {
@@ -69,7 +71,7 @@ func main() {
 	for {
 		lastTweetedId++
 
-		tweetText := getTweetText(err, year, lastTweetedId)
+		tweetText := getTweetText(year, lastTweetedId)
 		if tweetText == "" {
 			log.Info("No data for ", lastTweetedId)
 			return
@@ -104,50 +106,43 @@ func main() {
 }
 
 func likeTweets(client *twitter.Client, sinceId int64) {
-	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
-		UserID:  1334198651141361666,
-		Count:   1,
-		SinceID: sinceId,
-	})
-	if err != nil {
-		log.WithError(err).Error("Could not find tweets")
-		return
-	}
-	if len(likes) < 1 {
-		log.Infof("No likes since last time")
-		return
+	keywords := []string{
+		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw", "Dz.U.",
 	}
 
-	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-		Query:      "-from:Dziennik_Ustaw #DziennikUstaw OR Dziennik Ustaw OR Dz.U.",
-		Lang:       "pl",
-		ResultType: "recent",
-		SinceID:    likes[0].ID,
-		Count:      100,
-		TweetMode:  "extended",
-	})
-	if err != nil {
-		log.WithError(err).Fatal("Could not find tweets")
-	}
-	log.Infof("Found %d tweets to like", len(t.Statuses))
-	for _, tweet := range t.Statuses {
-		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
-			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
-			WithField("Text", tweet.FullText).Info("Like tweet")
-		if _, ok := os.LookupEnv("DRY"); ok {
-			log.Warn("DRY RUN")
-			continue
-		}
-		liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+	for _, keyword := range keywords {
+		log.WithField("Keyword", keyword).Debug("Search for tweets")
+		t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+			Query:      "-from:Dziennik_Ustaw " + keyword,
+			Lang:       "pl",
+			ResultType: "recent",
+			SinceID:    sinceId,
+			Count:      100,
+			TweetMode:  "extended",
+		})
 		if err != nil {
-			log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
-			continue
+			log.WithError(err).Fatal("Could not find tweets")
 		}
-		log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
+		log.Infof("Found %d tweets to like", len(t.Statuses))
+		for _, tweet := range t.Statuses {
+			log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
+				WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
+				WithField("Text", tweet.FullText).Info("Like tweet")
+			if _, ok := os.LookupEnv("DRY"); ok {
+				log.Warn("DRY RUN")
+				continue
+			}
+			liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+			if err != nil {
+				log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
+				continue
+			}
+			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
+		}
 	}
 }
 
-func getTweetText(err error, year int, lastTweetedId int) string {
+func getTweetText(year int, lastTweetedId int) string {
 	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
 	if err != nil {
 		log.WithError(err).Fatal("Could not get data from Dz.U.")
