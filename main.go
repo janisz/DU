@@ -185,7 +185,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 			})
 			log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
 			if err != nil {
-				log.WithError(err).Fatal("Could not publish tweet")
+				log.WithError(err).Error("Could not publish tweet")
 			}
 		}
 	}
