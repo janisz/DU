@@ -121,6 +121,10 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 		return
 	}
 
+	log.WithField("ID", likes[0].ID).WithField("Date", likes[0].CreatedAt).
+		WithField("❤ ", likes[0].FavoriteCount).WithField("⮔ ", likes[0].RetweetCount).
+		WithField("Text", likes[0].FullText).Info("Latest liked tweet")
+
 	keywords := []string{
 		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw", "Dz.U.",
 	}
@@ -131,7 +135,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 			Query:      "-from:Dziennik_Ustaw " + keyword,
 			Lang:       "pl",
 			ResultType: "recent",
-			SinceID:    sinceId,
+			SinceID:    likes[0].ID,
 			Count:      100,
 			TweetMode:  "extended",
 		})
