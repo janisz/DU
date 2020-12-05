@@ -107,6 +107,20 @@ func main() {
 }
 
 func likeTweets(client *twitter.Client, sinceId int64) {
+	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
+		UserID:  1334198651141361666,
+		Count:   1,
+		SinceID: sinceId,
+	})
+	if err != nil {
+		log.WithError(err).Error("Could not find tweets")
+		return
+	}
+	if len(likes) < 1 {
+		log.Infof("No likes since last time")
+		return
+	}
+
 	keywords := []string{
 		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw", "Dz.U.",
 	}
