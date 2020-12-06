@@ -157,7 +157,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 				log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
 				continue
 			}
-			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Liked tweed %d", tweet.ID)
+			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Infof("Liked tweed %d", tweet.ID)
 		}
 	}
 }
@@ -218,41 +218,54 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 			continue
 		}
 
-		tweetText := fmt.Sprintf("@%s %s\n%s", tweet.User.ScreenName, prepareMentions(tweet.Entities.UserMentions), getTweetText(year, pos))
-		if tweetText == "" {
-			log.WithField("ID", tweet.ID).Info("No data for ", pos)
-			return
-		}
-		mediaIds, err := uploadImages(year, pos, client)
+		previouslyTweeted, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+			Query:      fmt.Sprintf("from:Dziennik_Ustaw AND \"Dz.U. %d Poz. %d\"", year, pos),
+			Lang:       "pl",
+			ResultType: "recent",
+			Count:      1,
+			TweetMode:  "extended",
+		})
 		if err != nil {
-			log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
+			log.WithError(err).Fatal("Could not find tweets")
 		}
-
+		tweetText := ""
+		var mediaIds []int64
+		if len(previouslyTweeted.Statuses) > 0 {
+			log.WithField("ID", previouslyTweeted.Statuses[0].ID).WithField("Date", previouslyTweeted.Statuses[0].CreatedAt).
+				WithField("❤ ", previouslyTweeted.Statuses[0].FavoriteCount).WithField("⮔ ", previouslyTweeted.Statuses[0].RetweetCount).
+				WithField("Text", previouslyTweeted.Statuses[0].FullText).Infof("Found tweet with act")
+			tweetText = fmt.Sprintf("@%s https://twitter.com/Dziennik_Ustaw/status/%d", tweet.User.ScreenName, previouslyTweeted.Statuses[0].ID)
+		} else {
+			log.Infof("Preparing new tweet")
+			text := getTweetText(year, pos)
+			if text == "" {
+				log.WithField("ID", tweet.ID).Warn("No data for ", pos)
+				continue
+			}
+			tweetText = fmt.Sprintf("@%s %s", tweet.User.ScreenName, text)
+			mediaIds, err = uploadImages(year, pos, client)
+			if err != nil {
+				log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
+			}
+		}
 		if _, ok := os.LookupEnv("DRY"); ok {
 			log.WithField("ID", tweet.ID).WithField("Text", tweetText).Warn("DRY RUN")
 			continue
 		}
 		log.WithField("Text", tweetText).Info("Publishing...")
 		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
-			InReplyToStatusID: tweet.ID,
-			MediaIds:          mediaIds,
-			Lat:                &lat,
-			Long:               &long,
-			DisplayCoordinates: &truthy,
+			InReplyToStatusID:         tweet.ID,
+			AutoPopulateReplyMetadata: &truthy,
+			MediaIds:                  mediaIds,
+			Lat:                       &lat,
+			Long:                      &long,
+			DisplayCoordinates:        &truthy,
 		})
 		if err != nil {
 			log.WithError(err).Error("Could not publish tweet")
 		}
 		log.WithField("ID", t.ID).WithField("Text", t.Text).Infof("Responded to %d", tweet.ID)
 	}
-}
-
-func prepareMentions(mentions []twitter.MentionEntity) string {
-	var b strings.Builder
-	for _, menition := range mentions {
-		fmt.Fprintf(&b, "@%s ", menition.ScreenName)
-	}
-	return b.String()
 }
 
 func getTweetText(year int, lastTweetedId int) string {
