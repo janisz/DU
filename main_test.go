@@ -116,6 +116,9 @@ func Test_extractActFromTweet(t *testing.T) {
 		}, {
 			title: "Dz.U. z 2012 r.  poz. 318. Dz.U. z 2012 r.  poz. 319.",
 			year:  2012, pos: 318,
+		}, {
+			title: "Kolejna ważna zmiana tym razem dla 19 latków /Dz.U. poz.2157/. Wprowadzono w związku z #COVID19 zapis, że coroczną kwalifikację wojskową można realizować w kilku okresach w roku. Dotychczas kwalifikacja trwała od stycznia do kwietnia. https://t.co/qaf5ipyqJR",
+			year:  0, pos: 2157,
 		},
 	}
 	for _, tt := range tests {

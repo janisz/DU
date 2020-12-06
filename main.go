@@ -24,10 +24,13 @@ import (
 
 const url = "https://dziennikustaw.gov.pl"
 
+var (
+	lat    = 52.22548
+	long   = 21.02839
+	truthy = true
+)
+
 func main() {
-	lat := 52.22548
-	long := 21.02839
-	truthy := true
 
 	log.SetLevel(log.DebugLevel)
 
@@ -41,7 +44,7 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
-	tweets, _, err := client.Timelines.HomeTimeline(&twitter.HomeTimelineParams{
+	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
 		Count:          1,
 		ExcludeReplies: &truthy,
 		TweetMode:      "extended",
@@ -59,13 +62,17 @@ func main() {
 		WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
 		WithField("Text", tweet.FullText).Debug("Latest tweet from timeline")
 
-	likeTweets(client, tweet.ID)
-
 	lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.FullText)
+	if lastTweetedYear*lastTweetedId == 0 {
+		log.WithField("Year", lastTweetedYear).WithField("Pos", lastTweetedId).Fatal("There is a problem with obtaining last tweeted act")
+	}
 	year := time.Now().Year()
 	if year != lastTweetedYear {
 		lastTweetedId = 0
 	}
+
+	likeTweets(client, tweet.ID)
+	respondToTweets(client, tweet.ID)
 
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
@@ -88,16 +95,10 @@ func main() {
 		}
 		log.WithField("Text", tweetText).Info("Publishing...")
 		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
-			Status:             "",
-			InReplyToStatusID:  0,
-			PossiblySensitive:  nil,
 			Lat:                &lat,
 			Long:               &long,
-			PlaceID:            "",
 			DisplayCoordinates: &truthy,
-			TrimUser:           nil,
 			MediaIds:           mediaIds,
-			TweetMode:          "",
 		})
 		log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
 		if err != nil {
@@ -149,49 +150,100 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 				WithField("Text", tweet.FullText).Info("Like tweet")
 			if _, ok := os.LookupEnv("DRY"); ok {
 				log.Warn("DRY RUN")
-			} else {
-				liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
-				if err != nil {
-					log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
-					continue
-				}
-				log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Done")
-			}
-			year, pos := extractActFromTweet(tweet.FullText)
-			if year * pos == 0 {
 				continue
 			}
-			log.Debugf("Tweet reference Dz.U. %d Poz. %d", year, pos)
-			if year < 2012 {
-				log.Infof("Acts before 2012 are not supported")
-				continue
-			}
-
-
-			tweetText := fmt.Sprintf("@%s %s\n%s", tweet.User.ScreenName, prepareMentions(tweet.Entities.UserMentions), getTweetText(year, pos))
-			if tweetText == "" {
-				log.Info("No data for ", pos)
-				return
-			}
-			mediaIds, err := uploadImages(year, pos, client)
+			liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
 			if err != nil {
-				log.WithError(err).Fatal("Could not upload images")
-			}
-
-			if _, ok := os.LookupEnv("DRY"); ok {
-				log.WithField("Text", tweetText).Warn("DRY RUN")
+				log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
 				continue
 			}
-			log.WithField("Text", tweetText).Info("Publishing...")
-			t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
-				InReplyToStatusID:  tweet.ID,
-				MediaIds:           mediaIds,
-			})
-			log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
-			if err != nil {
-				log.WithError(err).Error("Could not publish tweet")
-			}
+			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Info("Liked tweed %d", tweet.ID)
 		}
+	}
+}
+
+func respondToTweets(client *twitter.Client, sinceId int64) {
+	flasy := false
+	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
+		SinceID:        sinceId,
+		Count:          1,
+		ExcludeReplies: &flasy,
+		TweetMode:      "extended",
+	})
+	if err != nil {
+		log.WithError(err).Fatal("Could not get tweets from timeline")
+	}
+	if err != nil {
+		log.WithError(err).Error("Could not find tweets")
+		return
+	}
+	if len(tweets) < 1 {
+		log.Infof("No tweets since last time")
+		return
+	}
+
+	log.WithField("ID", tweets[0].ID).WithField("Date", tweets[0].CreatedAt).
+		WithField("❤ ", tweets[0].FavoriteCount).WithField("⮔ ", tweets[0].RetweetCount).
+		WithField("Text", tweets[0].FullText).Info("Latest liked tweet")
+
+	log.WithField("Keyword", "Dz.U.").Debug("Search for tweets to respond")
+	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
+		Query:      "-from:Dziennik_Ustaw AND -filter:retweets AND \"Dz.U.\"",
+		Lang:       "pl",
+		ResultType: "recent",
+		SinceID:    tweets[0].ID,
+		Count:      100,
+		TweetMode:  "extended",
+	})
+	if err != nil {
+		log.WithError(err).Fatal("Could not find tweets")
+	}
+	log.Infof("Found %d tweets to responde", len(t.Statuses))
+	for _, tweet := range t.Statuses {
+		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
+			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
+			WithField("Text", tweet.FullText).Info("Respond tweet")
+
+		year, pos := extractActFromTweet(tweet.FullText)
+		if year == 0 {
+			log.WithField("ID", tweet.ID).Debug("Use current year")
+			year = time.Now().Year()
+		}
+		if pos == 0 {
+			continue
+		}
+		log.WithField("ID", tweet.ID).Debugf("Tweet reference Dz.U. %d Poz. %d", year, pos)
+		if year < 2012 {
+			log.WithField("ID", tweet.ID).Infof("Acts before 2012 are not supported")
+			continue
+		}
+
+		tweetText := fmt.Sprintf("@%s %s\n%s", tweet.User.ScreenName, prepareMentions(tweet.Entities.UserMentions), getTweetText(year, pos))
+		if tweetText == "" {
+			log.WithField("ID", tweet.ID).Info("No data for ", pos)
+			return
+		}
+		mediaIds, err := uploadImages(year, pos, client)
+		if err != nil {
+			log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
+		}
+
+		if _, ok := os.LookupEnv("DRY"); ok {
+			log.WithField("ID", tweet.ID).WithField("Text", tweetText).Warn("DRY RUN")
+			continue
+		}
+		log.WithField("Text", tweetText).Info("Publishing...")
+		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
+			InReplyToStatusID: tweet.ID,
+			MediaIds:          mediaIds,
+			Lat:                &lat,
+			Long:               &long,
+			DisplayCoordinates: &truthy,
+		})
+		if err != nil {
+			log.WithError(err).Error("Could not publish tweet")
+		}
+		log.WithField("ID", t.ID).WithField("Text", t.Text).Infof("Responded to %d", tweet.ID)
 	}
 }
 
@@ -401,11 +453,11 @@ func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
 }
 
 func extractActFromTweet(tweet string) (year, pos int) {
-	r := regexp.MustCompile(`Dz\.\s*U\.\s*z?\s*(?P<year>\d{4})( r\.\s*)?(\s[Pp]oz)?\.(\d+\.)?\s*(?P<pos>\d{1,4})`)
+	r := regexp.MustCompile(`Dz\.\s*U\.\s*z?\s*(?P<year>\d{4})?( r\.\s*)?(\s[Pp]oz)?\.(\d+\.)?\s*(?P<pos>\d{1,4})`)
 	match := r.FindStringSubmatch(tweet) // TODO: Find all matches not just first one
 	for i, name := range r.SubexpNames() {
 		if i > len(match) {
-			return year,pos
+			return year, pos
 		}
 		switch name {
 		case "year":
@@ -414,5 +466,5 @@ func extractActFromTweet(tweet string) (year, pos int) {
 			pos, _ = strconv.Atoi(match[i])
 		}
 	}
-	return year,pos
+	return year, pos
 }
