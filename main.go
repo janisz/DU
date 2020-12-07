@@ -127,7 +127,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 		WithField("Text", likes[0].FullText).Info("Latest liked tweet")
 
 	keywords := []string{
-		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw", "Dz.U.",
+		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw",
 	}
 
 	for _, keyword := range keywords {
