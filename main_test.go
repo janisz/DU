@@ -6,7 +6,8 @@ import (
 )
 
 type Item struct {
-	Pos   int    `json:"pos"`
+	Pos   int `json:"pos"`
+	Nr    int
 	Title string `json:"title"`
 	Year  int    `json:"year"`
 }
@@ -33,10 +34,15 @@ func Test_prepareTweet(t *testing.T) {
 			Title: "Rozporządzenie Ministra Edukacji i Nauki z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”", Year: 2020},
 			want: "Dz.U. 2020 poz. 2146 #DziennikUstaw\nRozporządzenie @Nauka_gov_PL z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”\nhttps://dziennikustaw.gov.pl/D2020000214601.pdf",
 		},
+		{act: Item{
+			Pos:   241, Nr: 41,
+			Title: "Protokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.", Year: 1973},
+			want: "Dz.U. 1973 poz. 241 #DziennikUstaw\nProtokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dni…\nhttps://dziennikustaw.gov.pl/D1973041024101.pdf",
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.act.Title, func(t *testing.T) {
-			if got := prepareTweet(tt.act.Year, tt.act.Pos, tt.act.Title); got != tt.want {
+			if got := prepareTweet(tt.act.Year,  tt.act.Nr, tt.act.Pos, tt.act.Title); got != tt.want {
 				t.Errorf("prepareTweet() = \n%v, want \n%v", got, tt.want)
 			}
 		})
@@ -74,6 +80,7 @@ func Test_extractActFromTweet(t *testing.T) {
 	tests := []struct {
 		title string
 		year  int
+		nr    int
 		pos   int
 	}{
 		{
@@ -119,16 +126,31 @@ func Test_extractActFromTweet(t *testing.T) {
 		}, {
 			title: "Kolejna ważna zmiana tym razem dla 19 latków /Dz.U. poz.2157/. Wprowadzono w związku z #COVID19 zapis, że coroczną kwalifikację wojskową można realizować w kilku okresach w roku. Dotychczas kwalifikacja trwała od stycznia do kwietnia. https://t.co/qaf5ipyqJR",
 			year:  0, pos: 2157,
+		}, {
+			title: "Źródło: Dz.U. z 1998 r. Nr 51, poz. 318.",
+			year:  1998, nr: 51, pos: 318,
+		}, {
+			title: "Wbij sobie to do swojej pustej bani !\nDz. U. 1997.78.483 - Konstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. Nikt nie może być poddany eksperymentom naukowym, w tym medycznym, bez dobrowolnie wyrażonej zgody.",
+			year:  1997, nr: 78, pos: 483,
+		}, {
+			title: "Dz.U.1997.106.681 z późn. zm.",
+			year:  1997, nr: 106, pos: 681,
+		}, {
+			title: "w związku z Art. 47 w związku z Art. 51 w związku z Art. 52  Konstytucji Rzeczypospolitej Polskiej (Dz.U. 1997 nr 78 poz. 483) !!!",
+			year:  1997, nr: 78, pos: 483,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
-			y, p := extractActFromTweet(tt.title)
+			y, n, p := extractActFromTweet(tt.title)
 			if y != tt.year {
 				t.Errorf("extractActFromTweet() =\n%v, want\n%v", y, tt.year)
 			}
 			if p != tt.pos {
 				t.Errorf("extractActFromTweet() =\n%v, want\n%v", p, tt.pos)
+			}
+			if n != tt.nr {
+				t.Errorf("extractActFromTweet() =\n%v, want\n%v", n, tt.nr)
 			}
 		})
 	}

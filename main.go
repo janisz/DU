@@ -72,19 +72,19 @@ func main() {
 	}
 
 	likeTweets(client, tweet.ID)
-	respondToTweets(client, tweet.ID)
+	respondToTweets(client)
 
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
 	for {
 		lastTweetedId++
 
-		tweetText := getTweetText(year, lastTweetedId)
+		tweetText := getTweetText(year, 0, lastTweetedId)
 		if tweetText == "" {
 			log.Info("No data for ", lastTweetedId)
 			return
 		}
-		mediaIds, err := uploadImages(year, lastTweetedId, client)
+		mediaIds, err := uploadImages(year, 0, lastTweetedId, client)
 		if err != nil {
 			log.WithError(err).Fatal("Could not upload images")
 		}
@@ -162,10 +162,9 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 	}
 }
 
-func respondToTweets(client *twitter.Client, sinceId int64) {
+func respondToTweets(client *twitter.Client) {
 	flasy := false
 	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
-		SinceID:        sinceId,
 		Count:          1,
 		ExcludeReplies: &flasy,
 		TweetMode:      "extended",
@@ -184,7 +183,7 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 
 	log.WithField("ID", tweets[0].ID).WithField("Date", tweets[0].CreatedAt).
 		WithField("❤ ", tweets[0].FavoriteCount).WithField("⮔ ", tweets[0].RetweetCount).
-		WithField("Text", tweets[0].FullText).Info("Latest liked tweet")
+		WithField("Text", tweets[0].FullText).Info("Latest responded tweet")
 
 	log.WithField("Keyword", "Dz.U.").Debug("Search for tweets to respond")
 	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
@@ -204,8 +203,8 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
 			WithField("Text", tweet.FullText).Info("Respond tweet")
 
-		year, pos := extractActFromTweet(tweet.FullText)
-		if year == 0 {
+		year, nr, pos := extractActFromTweet(tweet.FullText)
+		if year == 0 && nr == 0 {
 			log.WithField("ID", tweet.ID).Debug("Use current year")
 			year = time.Now().Year()
 		}
@@ -213,8 +212,8 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 			continue
 		}
 		log.WithField("ID", tweet.ID).Debugf("Tweet reference Dz.U. %d Poz. %d", year, pos)
-		if year < 2012 {
-			log.WithField("ID", tweet.ID).Infof("Acts before 2012 are not supported")
+		if year < 2012 && nr == 0 {
+			log.WithField("ID", tweet.ID).Infof("Acts before 2012 must have number")
 			continue
 		}
 
@@ -237,13 +236,13 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 			tweetText = fmt.Sprintf("@%s https://twitter.com/Dziennik_Ustaw/status/%d", tweet.User.ScreenName, previouslyTweeted.Statuses[0].ID)
 		} else {
 			log.Infof("Preparing new tweet")
-			text := getTweetText(year, pos)
+			text := getTweetText(year, nr, pos)
 			if text == "" {
 				log.WithField("ID", tweet.ID).Warn("No data for ", pos)
 				continue
 			}
 			tweetText = fmt.Sprintf("@%s %s", tweet.User.ScreenName, text)
-			mediaIds, err = uploadImages(year, pos, client)
+			mediaIds, err = uploadImages(year, nr, pos, client)
 			if err != nil {
 				log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
 			}
@@ -268,8 +267,8 @@ func respondToTweets(client *twitter.Client, sinceId int64) {
 	}
 }
 
-func getTweetText(year int, lastTweetedId int) string {
-	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, lastTweetedId))
+func getTweetText(year, nr, pos int) string {
+	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
 	if err != nil {
 		log.WithError(err).Fatal("Could not get data from Dz.U.")
 	}
@@ -280,11 +279,11 @@ func getTweetText(year int, lastTweetedId int) string {
 	if title == "" {
 		return ""
 	}
-	return prepareTweet(year, lastTweetedId, title)
+	return prepareTweet(year, nr, pos, title)
 }
 
-func uploadImages(year int, lastTweetedId int, client *twitter.Client) ([]int64, error) {
-	url := pdfUrl(year, lastTweetedId)
+func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
+	url := pdfUrl(year, nr, pos)
 	r, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return nil, err
@@ -356,16 +355,16 @@ func getTitleFromPage(body io.ReadCloser) string {
 
 }
 
-func prepareTweet(year, id int, title string) string {
+func prepareTweet(year, nr, id int, title string) string {
 	return strings.Join([]string{
 		fmt.Sprintf("Dz.U. %d poz. %d #DziennikUstaw", year, id), // 37 chars (Dz.U. YYYY poz. XXXX #DziennikUstaw\n)
 		trimTitle(title), // < 280-37-23 ~ 200 (1 for new line)
-		pdfUrl(year, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
+		pdfUrl(year, nr, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
 }
 
-func pdfUrl(year int, id int) string {
-	return fmt.Sprintf("%s/D%d%07d01.pdf", url, year, id)
+func pdfUrl(year, nr, pos int) string {
+	return fmt.Sprintf("%s/D%d%03d%04d01.pdf", url, year, nr, pos)
 }
 
 var handles = map[string]string{
@@ -465,19 +464,24 @@ func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
 	return result, nil
 }
 
-func extractActFromTweet(tweet string) (year, pos int) {
-	r := regexp.MustCompile(`Dz\.\s*U\.\s*z?\s*(?P<year>\d{4})?( r\.\s*)?(\s[Pp]oz)?\.(\d+\.)?\s*(?P<pos>\d{1,4})`)
+func extractActFromTweet(tweet string) (year, nr, pos int) {
+	r := regexp.MustCompile(`(?i)Dz\.\s*U\.\s*z?\s*(?P<year>\d{4})?\s*(r\.?)?\s*(Nr\s*(?P<nr>\d{1,3}),?\s*)?(\s*[Pp]oz)?\.((?P<nr>\d{1,3})\.)?\s*(?P<pos>\d{1,4})`)
 	match := r.FindStringSubmatch(tweet) // TODO: Find all matches not just first one
 	for i, name := range r.SubexpNames() {
 		if i > len(match) {
-			return year, pos
+			return year, nr, pos
 		}
 		switch name {
 		case "year":
 			year, _ = strconv.Atoi(match[i])
+		case "nr":
+			if nr != 0 {
+				break
+			}
+			nr, _ = strconv.Atoi(match[i])
 		case "pos":
 			pos, _ = strconv.Atoi(match[i])
 		}
 	}
-	return year, pos
+	return year, nr, pos
 }
