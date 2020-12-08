@@ -233,7 +233,7 @@ func respondToTweets(client *twitter.Client) {
 			log.WithField("ID", previouslyTweeted.Statuses[0].ID).WithField("Date", previouslyTweeted.Statuses[0].CreatedAt).
 				WithField("❤ ", previouslyTweeted.Statuses[0].FavoriteCount).WithField("⮔ ", previouslyTweeted.Statuses[0].RetweetCount).
 				WithField("Text", previouslyTweeted.Statuses[0].FullText).Infof("Found tweet with act")
-			tweetText = fmt.Sprintf("@%s https://twitter.com/Dziennik_Ustaw/status/%d", tweet.User.ScreenName, previouslyTweeted.Statuses[0].ID)
+			tweetText = fmt.Sprintf("https://twitter.com/Dziennik_Ustaw/status/%d", previouslyTweeted.Statuses[0].ID)
 		} else {
 			log.Infof("Preparing new tweet")
 			text := getTweetText(year, nr, pos)
@@ -241,7 +241,7 @@ func respondToTweets(client *twitter.Client) {
 				log.WithField("ID", tweet.ID).Warn("No data for ", pos)
 				continue
 			}
-			tweetText = fmt.Sprintf("@%s %s", tweet.User.ScreenName, text)
+			tweetText = text
 			mediaIds, err = uploadImages(year, nr, pos, client)
 			if err != nil {
 				log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
