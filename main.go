@@ -58,9 +58,7 @@ func main() {
 	}
 
 	tweet := tweets[0]
-	log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
-		WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
-		WithField("Text", tweet.FullText).Debug("Latest tweet from timeline")
+	log.WithFields(logTweet(tweet)).Debug("Latest tweet from timeline")
 
 	lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.FullText)
 	if lastTweetedYear*lastTweetedId == 0 {
@@ -122,9 +120,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 		return
 	}
 
-	log.WithField("ID", likes[0].ID).WithField("Date", likes[0].CreatedAt).
-		WithField("❤ ", likes[0].FavoriteCount).WithField("⮔ ", likes[0].RetweetCount).
-		WithField("Text", likes[0].FullText).Info("Latest liked tweet")
+	log.WithFields(logTweet(likes[0])).Info("Latest liked tweet")
 
 	keywords := []string{
 		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw",
@@ -145,9 +141,7 @@ func likeTweets(client *twitter.Client, sinceId int64) {
 		}
 		log.Infof("Found %d tweets to like", len(t.Statuses))
 		for _, tweet := range t.Statuses {
-			log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
-				WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
-				WithField("Text", tweet.FullText).Info("Like tweet")
+			log.WithFields(logTweet(tweet)).Info("Like tweet")
 			if _, ok := os.LookupEnv("DRY"); ok {
 				log.Warn("DRY RUN")
 				continue
@@ -181,9 +175,7 @@ func respondToTweets(client *twitter.Client) {
 		return
 	}
 
-	log.WithField("ID", tweets[0].ID).WithField("Date", tweets[0].CreatedAt).
-		WithField("❤ ", tweets[0].FavoriteCount).WithField("⮔ ", tweets[0].RetweetCount).
-		WithField("Text", tweets[0].FullText).Info("Latest responded tweet")
+	log.WithFields(logTweet(tweets[0])).Info("Latest responded tweet")
 
 	log.WithField("Keyword", "Dz.U.").Debug("Search for tweets to respond")
 	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
@@ -199,9 +191,7 @@ func respondToTweets(client *twitter.Client) {
 	}
 	log.Infof("Found %d tweets to responde", len(t.Statuses))
 	for _, tweet := range t.Statuses {
-		log.WithField("ID", tweet.ID).WithField("Date", tweet.CreatedAt).
-			WithField("❤ ", tweet.FavoriteCount).WithField("⮔ ", tweet.RetweetCount).
-			WithField("Text", tweet.FullText).Info("Respond tweet")
+		log.WithFields(logTweet(tweet)).Info("Respond tweet")
 
 		year, nr, pos := extractActFromTweet(tweet.FullText)
 		if year == 0 && nr == 0 {
@@ -230,9 +220,7 @@ func respondToTweets(client *twitter.Client) {
 		tweetText := ""
 		var mediaIds []int64
 		if len(previouslyTweeted.Statuses) > 0 {
-			log.WithField("ID", previouslyTweeted.Statuses[0].ID).WithField("Date", previouslyTweeted.Statuses[0].CreatedAt).
-				WithField("❤ ", previouslyTweeted.Statuses[0].FavoriteCount).WithField("⮔ ", previouslyTweeted.Statuses[0].RetweetCount).
-				WithField("Text", previouslyTweeted.Statuses[0].FullText).Infof("Found tweet with act")
+			log.WithFields(logTweet(previouslyTweeted.Statuses[0])).Infof("Found tweet with act")
 			tweetText = fmt.Sprintf("https://twitter.com/Dziennik_Ustaw/status/%d", previouslyTweeted.Statuses[0].ID)
 		} else {
 			log.Infof("Preparing new tweet")
@@ -484,4 +472,14 @@ func extractActFromTweet(tweet string) (year, nr, pos int) {
 		}
 	}
 	return year, nr, pos
+}
+
+func logTweet(t twitter.Tweet) log.Fields {
+	return log.Fields{
+		"ID": t.ID,
+		"Date": t.CreatedAt,
+		"❤ ": t.FavoriteCount,
+		"⮔ ": t.RetweetCount,
+		"Text": t.FullText,
+	}
 }
