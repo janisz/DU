@@ -162,6 +162,10 @@ func Test_getIdFromTweet(t *testing.T) {
 		id int
 		y  int
 	}{
+		{in: "Dz.U. 2020 poz.1", y: 0, id: 0},
+		{in: "Dz.U. abcd poz. xyz", y: 0, id: 0},
+		{in: "Dz.U. 2020 poz. xyz", y: 0, id: 0},
+		{in: "Dz.U. abcd poz. 1", y: 0, id: 0},
 		{in: "Dz.U. 2020 poz. 1", y: 2020, id: 1},
 		{in: "Dz.U. 2020 poz. 999", y: 2020, id: 999},
 		{in: "Dz.U. 2020 poz. 2\nRozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej\nhttp://api.sejm.gov.pl/eli/acts/DU/2020/2/text.pdf", y: 2020, id: 2},
@@ -205,5 +209,13 @@ func Test_convertPDFToPng(t *testing.T) {
 	}
 	if len(out) != 2 {
 		t.Errorf("Got %v", out)
+	}
+}
+
+func TestIntegrationGetTweetText(t *testing.T) {
+	text := getTweetText(1997,78,483 )
+	e := "Dz.U. 1997 poz. 483 #DziennikUstaw\nKonstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. uchwalona przez Zgromadzenie Narodowe w dniu 2 kwietnia 1997 r., przyjęta przez Naród w referendum konstytucyjnym w dniu 25 maja 1997 r…\nhttps://dziennikustaw.gov.pl/D1997078048301.pdf"
+	if text != e {
+		t.Errorf("Expected %s got %s", e, text)
 	}
 }
