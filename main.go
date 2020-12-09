@@ -69,7 +69,7 @@ func main() {
 		lastTweetedId = 0
 	}
 
-	likeTweets(client, tweet.ID)
+	likeTweets(client)
 	respondToTweets(client)
 
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
@@ -105,11 +105,10 @@ func main() {
 	}
 }
 
-func likeTweets(client *twitter.Client, sinceId int64) {
+func likeTweets(client *twitter.Client) {
 	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
 		UserID:  1334198651141361666,
 		Count:   1,
-		SinceID: sinceId,
 	})
 	if err != nil {
 		log.WithError(err).Error("Could not find tweets")
