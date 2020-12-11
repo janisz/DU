@@ -272,6 +272,7 @@ func getTweetText(year, nr, pos int) string {
 func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 	url := pdfUrl(year, nr, pos)
 	r, err := http.DefaultClient.Get(url)
+	log.WithField("URL", url).Infof("GET images")
 	if err != nil {
 		return nil, err
 	}
