@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/jpeg"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"regexp"
@@ -260,6 +261,10 @@ func getTweetText(year, nr, pos int) string {
 		log.WithError(err).Fatal("Could not get data from Dz.U.")
 	}
 	if r.StatusCode != http.StatusOK {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
+		}
 		log.WithField("Status", r.Status).Fatal("Unexpected status")
 	}
 	title := getTitleFromPage(r.Body)
@@ -277,6 +282,10 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 		return nil, err
 	}
 	if r.StatusCode != http.StatusOK {
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
+		}
 		return nil, fmt.Errorf(r.Status)
 	}
 	pages, err := convertPDFToJpgs(r.Body)
