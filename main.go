@@ -16,11 +16,11 @@ import (
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 
-	"github.com/gen2brain/go-fitz"
-
 	"golang.org/x/net/html"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/gen2brain/go-fitz"
 )
 
 const url = "https://dziennikustaw.gov.pl"
@@ -108,8 +108,8 @@ func main() {
 
 func likeTweets(client *twitter.Client) {
 	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
-		UserID:  1334198651141361666,
-		Count:   1,
+		UserID: 1334198651141361666,
+		Count:  1,
 	})
 	if err != nil {
 		log.WithError(err).Error("Could not find tweets")
@@ -355,7 +355,7 @@ func getTitleFromPage(body io.ReadCloser) string {
 func prepareTweet(year, nr, id int, title string) string {
 	return strings.Join([]string{
 		fmt.Sprintf("Dz.U. %d poz. %d #DziennikUstaw", year, id), // 37 chars (Dz.U. YYYY poz. XXXX #DziennikUstaw\n)
-		trimTitle(title), // < 280-37-23 ~ 200 (1 for new line)
+		trimTitle(title),     // < 280-37-23 ~ 200 (1 for new line)
 		pdfUrl(year, nr, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
 }
@@ -365,25 +365,31 @@ func pdfUrl(year, nr, pos int) string {
 }
 
 var handles = map[string]string{
-	"Ministra Zdrowia":                            "@MZ_gov_PL",
-	"Ministra Infrastruktury":                     "@MI_gov_PL",
-	"Ministra Sportu":                             "@Sport_gov_PL",
-	"Prezesa Rady Ministrów":                      "@PremierRP",
-	"Prezydenta Rzeczypospolitej Polskiej":        "@PrezydentPL",
-	"Ministra Obrony Narodowej":                   "@MON_gov_PL",
-	"Ministra Finansów":                           "@MF_gov_PL",
-	"Ministra Sprawiedliwości":                    "@MS_gov_PL",
-	"Ministra Spraw Zagranicznych":                "@MSZ_RP",
-	"Ministra Spraw Wewnętrznych i Administracji": "@MSWiA_gov_PL",
-	"Ministra Edukacji Narodowej":                 "@MEN_gov_PL",
-	"Ministra Nauki i Szkolnictwa Wyższego":       "@Nauka_gov_PL",
-	"Ministra Kultury i Dziedzictwa Narodowego":   "@MKiDN_gov_PL",
-	"Ministra Rolnictwa i Rozwoju Wsi":            "@MRiRW_gov_PL",
-	"Trybunału Konstytucyjnego":                   "@TK_gov_PL",
-	"Sejmu Rzeczypospolitej Polskiej":             "@KancelariaSejmu",
-	"Ministra Edukacji i Nauki":                   "@Nauka_gov_PL",
-	"Ministra Klimatu":                            "@MKiS_gov_PL",
-	"Państwowej Komisji Wyborczej":                "@PanstwKomWyb",
+	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
+	"Ministra Edukacji i Nauki":                          "@Nauka_gov_PL",
+	"Ministra Edukacji Narodowej":                        "@MEN_gov_PL",
+	"Ministra Finansów ":                                 "@MF_gov_PL ",
+	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
+	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
+	"Ministra Infrastruktury":                            "@MI_gov_PL",
+	"Ministra Klimatu":                                   "@MKiS_gov_PL",
+	"Ministra Klimatu i Środowiska":                      "@MKiS_gov_PL",
+	"Ministra Kultury i Dziedzictwa Narodowego":          "@MKiDN_gov_PL",
+	"Ministra Nauki i Szkolnictwa Wyższego":              "@Nauka_gov_PL",
+	"Ministra Obrony Narodowej":                          "@MON_gov_PL",
+	"Ministra Rodziny i Polityki Społecznej":             "@MRiPS_gov_PL",
+	"Ministra Rolnictwa i Rozwoju Wsi":                   "@MRiRW_gov_PL",
+	"Ministra Rozwoju, Pracy i Technologii":              "@MRPiT_gov_PL",
+	"Ministra Sportu":                                    "@Sport_gov_PL",
+	"Ministra Spraw Wewnętrznych i Administracji":        "@MSWiA_gov_PL",
+	"Ministra Spraw Zagranicznych":                       "@MSZ_RP",
+	"Ministra Sprawiedliwości":                           "@MS_gov_PL",
+	"Ministra Zdrowia":                                   "@MZ_gov_PL",
+	"Państwowej Komisji Wyborczej":                       "@PanstwKomWyb",
+	"Prezesa Rady Ministrów":                             "@PremierRP",
+	"Prezydenta Rzeczypospolitej Polskiej":               "@PrezydentPL",
+	"Sejmu Rzeczypospolitej Polskiej":                    "@KancelariaSejmu",
+	"Trybunału Konstytucyjnego":                          "@TK_gov_PL",
 }
 
 var emojis = map[string]string{
@@ -485,10 +491,10 @@ func extractActFromTweet(tweet string) (year, nr, pos int) {
 
 func logTweet(t twitter.Tweet) log.Fields {
 	return log.Fields{
-		"ID": t.ID,
+		"ID":   t.ID,
 		"Date": t.CreatedAt,
-		"❤ ": t.FavoriteCount,
-		"⮔ ": t.RetweetCount,
+		"❤ ":   t.FavoriteCount,
+		"⮔ ":   t.RetweetCount,
 		"Text": t.FullText,
 	}
 }
