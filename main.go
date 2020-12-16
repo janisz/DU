@@ -20,6 +20,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"github.com/avast/retry-go"
 	"github.com/gen2brain/go-fitz"
 )
 
@@ -275,22 +276,12 @@ func getTweetText(year, nr, pos int) string {
 }
 
 func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
-	url := pdfUrl(year, nr, pos)
-	r, err := http.DefaultClient.Get(url)
-	log.WithField("URL", url).Infof("GET images")
+	r, err := getPDF(year, nr, pos)
 	if err != nil {
 		return nil, err
 	}
-	if r.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
-		}
-		return nil, fmt.Errorf(r.Status)
-	}
+	defer r.Body.Close()
 	pages, err := convertPDFToJpgs(r.Body)
-	r.Body.Close()
-
 	if err != nil {
 		return nil, err
 	}
@@ -323,6 +314,25 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 		mediaIds = append(mediaIds, resp.MediaID)
 	}
 	return mediaIds, nil
+}
+
+func getPDF(year int, nr int, pos int) (r *http.Response, err error) {
+	url := pdfUrl(year, nr, pos)
+	return r, retry.Do(func() error {
+		r, err = http.DefaultClient.Get(url)
+		log.WithField("URL", url).Infof("GET images")
+		if err != nil {
+			return fmt.Errorf("could not fetch images %w", err)
+		}
+		if r.StatusCode != http.StatusOK {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
+			}
+			return fmt.Errorf("invalid status %s", r.Status)
+		}
+		return nil
+	})
 }
 
 const MaxTitleLength = 200

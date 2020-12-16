@@ -5,6 +5,7 @@ go 1.15
 replace github.com/dghubble/go-twitter => github.com/janisz/go-twitter v0.0.0-20201206102041-3fe237ed29f3
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/dghubble/go-twitter v0.0.0-20201011215211-4b180d0cc78d
 	github.com/dghubble/oauth1 v0.6.0
 	github.com/gen2brain/go-fitz v0.0.0-20201203142238-0adf3f7e5ef8

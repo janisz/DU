@@ -13,6 +13,7 @@ type Item struct {
 }
 
 func Test_prepareTweet(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		act  Item
 		want string
@@ -42,6 +43,7 @@ func Test_prepareTweet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.act.Title, func(t *testing.T) {
+			t.Parallel()
 			if got := prepareTweet(tt.act.Year,  tt.act.Nr, tt.act.Pos, tt.act.Title); got != tt.want {
 				t.Errorf("prepareTweet() = \n%v, want \n%v", got, tt.want)
 			}
@@ -50,6 +52,7 @@ func Test_prepareTweet(t *testing.T) {
 }
 
 func Test_trimTweet(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		title string
 		want  string
@@ -69,6 +72,7 @@ func Test_trimTweet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			t.Parallel()
 			if got := trimTitle(tt.title); got != tt.want {
 				t.Errorf("prepareTweet() =\n%v, want\n%v", got, tt.want)
 			}
@@ -77,6 +81,7 @@ func Test_trimTweet(t *testing.T) {
 }
 
 func Test_extractActFromTweet(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		title string
 		year  int
@@ -142,6 +147,7 @@ func Test_extractActFromTweet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.title, func(t *testing.T) {
+			t.Parallel()
 			y, n, p := extractActFromTweet(tt.title)
 			if y != tt.year {
 				t.Errorf("extractActFromTweet() =\n%v, want\n%v", y, tt.year)
@@ -157,6 +163,7 @@ func Test_extractActFromTweet(t *testing.T) {
 }
 
 func Test_getIdFromTweet(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in string
 		id int
@@ -172,6 +179,7 @@ func Test_getIdFromTweet(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.in, func(t *testing.T) {
+			t.Parallel()
 			y, id := getIdFromTweet(tt.in)
 			if y != tt.y {
 				t.Errorf("getIdFromTweet() = %v, want %v", y, tt.y)
@@ -184,6 +192,7 @@ func Test_getIdFromTweet(t *testing.T) {
 }
 
 func Test_getTitleFromPage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		want string
@@ -193,6 +202,7 @@ func Test_getTitleFromPage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			file, _ := os.Open("testdata/" + tt.name)
 			if got := getTitleFromPage(file); got != tt.want {
 				t.Errorf("getTitleFromPage() = %v, want %v", got, tt.want)
@@ -202,6 +212,8 @@ func Test_getTitleFromPage(t *testing.T) {
 }
 
 func Test_convertPDFToPng(t *testing.T) {
+	t.Skip("There is an intergration test for that")
+	t.Parallel()
 	file, _ := os.Open("testdata/D2020000000101.pdf")
 	out, err := convertPDFToJpgs(file)
 	if err != nil {
@@ -213,9 +225,26 @@ func Test_convertPDFToPng(t *testing.T) {
 }
 
 func TestIntegrationGetTweetText(t *testing.T) {
+	t.Parallel()
 	text := getTweetText(1997,78,483 )
 	e := "Dz.U. 1997 poz. 483 #DziennikUstaw\nKonstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. uchwalona przez Zgromadzenie Narodowe w dniu 2 kwietnia 1997 r., przyjęta przez Naród w referendum konstytucyjnym w dniu 25 maja 1997 r…\nhttps://dziennikustaw.gov.pl/D1997078048301.pdf"
 	if text != e {
 		t.Errorf("Expected %s got %s", e, text)
 	}
 }
+
+func TestIntegrationgetPDF(t *testing.T) {
+	t.Parallel()
+	r, err := getPDF(2020,0,2267 )
+	if err != nil {
+		t.Fatal(err)
+	}
+	pages, err := convertPDFToJpgs(r.Body)
+	if len(pages) != 1 {
+		t.Errorf("expected pages %d but got %d", 1, len(pages))
+	}
+	if err != nil {
+		t.Error(err)
+	}
+}
+
