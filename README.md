@@ -1,6 +1,6 @@
 # DziennikUstaw
 
-Dziennik Ustaw Twitter Bot![CI](https://github.com/janisz/DU/workflows/CI/badge.svg)<a href="https://www.statuscake.com" title="Website Uptime Monitoring"><img src="https://app.statuscake.com/button/index.php?Track=QDJOsFpvjh&Days=1000&Design=3" /></a>
+Dziennik Ustaw Twitter Bot![CI](https://github.com/janisz/DU/workflows/CI/badge.svg)<a href="https://uptime.statuscake.com/?TestID=fSn3kVyLKf" title="Website Uptime Monitoring"><img src="https://app.statuscake.com/button/index.php?Track=QDJOsFpvjh&Days=1000&Design=3" /></a>
 
 ---
 
