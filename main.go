@@ -250,7 +250,7 @@ func respondToTweets(client *twitter.Client) {
 			DisplayCoordinates:        &truthy,
 		})
 		if err != nil {
-			log.WithError(err).Error("Could not publish tweet")
+			log.WithError(err).Fatal("Could not publish tweet")
 		}
 		log.WithField("ID", t.ID).WithField("Text", t.Text).Infof("Responded to %d", tweet.ID)
 	}
