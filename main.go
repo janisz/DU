@@ -46,17 +46,44 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
+	likeTweets(client)
+	responses, err := respondToTweets(client)
+	if err != nil {
+		log.WithError(err).Fatal("Could not prepare responses")
+	}
+
+	newActs, err := prepareNewActs(client)
+	if err != nil {
+		log.WithError(err).Fatal("Could not prepare new acts")
+	}
+
+	log.WithField("NewActs", len(newActs)).WithField("Responses", len(responses)).Info("Publishing tweets")
+	if _, ok := os.LookupEnv("DRY"); ok {
+		log.Warn("DRY RUN")
+		return
+	}
+	for _, tweet := range append(newActs, responses...) {
+		t, _, err := client.Statuses.Update(tweet.Status, &tweet)
+		if err != nil {
+			log.WithError(err).Fatal("Could not publish tweet")
+		}
+		log.WithFields(logTweet(*t)).Info("Published")
+	}
+
+}
+
+func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error) {
 	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
 		Count:          1,
 		ExcludeReplies: &truthy,
 		TweetMode:      "extended",
 	})
 	if err != nil {
-		log.WithError(err).Fatal("Could not get tweets from timeline")
+		return nil, fmt.Errorf("could not get tweets from timeline: %w", err)
 	}
 
 	if len(tweets) < 1 {
-		log.Fatal("No tweets")
+		return nil, fmt.Errorf("no tweets")
 	}
 
 	tweet := tweets[0]
@@ -71,40 +98,32 @@ func main() {
 		lastTweetedId = 0
 	}
 
-	likeTweets(client)
-	respondToTweets(client)
-
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
+	newActs := []twitter.StatusUpdateParams{}
 	for {
 		lastTweetedId++
 
 		tweetText := getTweetText(year, 0, lastTweetedId)
 		if tweetText == "" {
-			log.Info("No data for ", lastTweetedId)
-			return
+			log.WithField("Year", year).WithField("Pos", lastTweetedId).Info("No data")
+			return nil, nil
 		}
 		mediaIds, err := uploadImages(year, 0, lastTweetedId, client)
 		if err != nil {
-			log.WithError(err).Fatal("Could not upload images")
+			return nil, fmt.Errorf("could not upload images: %w", err)
 		}
 
-		if _, ok := os.LookupEnv("DRY"); ok {
-			log.WithField("Text", tweetText).Warn("DRY RUN")
-			continue
-		}
 		log.WithField("Text", tweetText).Info("Publishing...")
-		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
+		newActs = append(newActs, twitter.StatusUpdateParams{
+			Status:             tweetText,
 			Lat:                &lat,
 			Long:               &long,
 			DisplayCoordinates: &truthy,
 			MediaIds:           mediaIds,
 		})
-		log.WithField("ID", t.ID).WithField("Text", t.Text).Info("Done")
-		if err != nil {
-			log.WithError(err).Fatal("Could not publish tweet")
-		}
 	}
+	return newActs, nil
 }
 
 func likeTweets(client *twitter.Client) {
@@ -157,7 +176,7 @@ func likeTweets(client *twitter.Client) {
 	}
 }
 
-func respondToTweets(client *twitter.Client) {
+func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, error) {
 	flasy := false
 	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
 		Count:          1,
@@ -165,15 +184,11 @@ func respondToTweets(client *twitter.Client) {
 		TweetMode:      "extended",
 	})
 	if err != nil {
-		log.WithError(err).Fatal("Could not get tweets from timeline")
-	}
-	if err != nil {
-		log.WithError(err).Error("Could not find tweets")
-		return
+		return nil, fmt.Errorf("could not get tweets from timeline: %w", err)
 	}
 	if len(tweets) < 1 {
 		log.Infof("No tweets since last time")
-		return
+		return nil, nil
 	}
 
 	log.WithFields(logTweet(tweets[0])).Info("Latest responded tweet")
@@ -188,9 +203,12 @@ func respondToTweets(client *twitter.Client) {
 		TweetMode:  "extended",
 	})
 	if err != nil {
-		log.WithError(err).Fatal("Could not find tweets")
+		return nil, fmt.Errorf("could not find tweets: %w", err)
 	}
 	log.Infof("Found %d tweets to responde", len(t.Statuses))
+
+	responses := make([]twitter.StatusUpdateParams, 0, len(t.Statuses))
+
 	for _, tweet := range t.Statuses {
 		log.WithFields(logTweet(tweet)).Info("Respond tweet")
 
@@ -216,7 +234,7 @@ func respondToTweets(client *twitter.Client) {
 			TweetMode:  "extended",
 		})
 		if err != nil {
-			log.WithError(err).Fatal("Could not find tweets")
+			return nil, fmt.Errorf("could not find tweets with responses: %w", err)
 		}
 		tweetText := ""
 		var mediaIds []int64
@@ -233,15 +251,12 @@ func respondToTweets(client *twitter.Client) {
 			tweetText = text
 			mediaIds, err = uploadImages(year, nr, pos, client)
 			if err != nil {
-				log.WithField("ID", tweet.ID).WithError(err).Fatal("Could not upload images")
+				return nil, fmt.Errorf("could not upload images: %w", err)
 			}
 		}
-		if _, ok := os.LookupEnv("DRY"); ok {
-			log.WithField("ID", tweet.ID).WithField("Text", tweetText).Warn("DRY RUN")
-			continue
-		}
-		log.WithField("Text", tweetText).Info("Publishing...")
-		t, _, err := client.Statuses.Update(tweetText, &twitter.StatusUpdateParams{
+
+		responses = append(responses, twitter.StatusUpdateParams{
+			Status:                    tweetText,
 			InReplyToStatusID:         tweet.ID,
 			AutoPopulateReplyMetadata: &truthy,
 			MediaIds:                  mediaIds,
@@ -249,11 +264,8 @@ func respondToTweets(client *twitter.Client) {
 			Long:                      &long,
 			DisplayCoordinates:        &truthy,
 		})
-		if err != nil {
-			log.WithError(err).Fatal("Could not publish tweet")
-		}
-		log.WithField("ID", t.ID).WithField("Text", t.Text).Infof("Responded to %d", tweet.ID)
 	}
+	return responses, nil
 }
 
 func getTweetText(year, nr, pos int) string {
