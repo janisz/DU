@@ -269,16 +269,24 @@ func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, erro
 }
 
 func getTweetText(year, nr, pos int) string {
-	r, err := http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
+	var r *http.Response
+	err := retry.Do(func() error {
+		var err error
+		r, err = http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
+		if err != nil {
+			return err
+		}
+		if r.StatusCode != http.StatusOK {
+			body, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
+			}
+			return fmt.Errorf("unexpected status: %s", r.Status)
+		}
+		return err
+	})
 	if err != nil {
 		log.WithError(err).Fatal("Could not get data from Dz.U.")
-	}
-	if r.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.WithField("URL", url).WithField("Status", r.StatusCode).WithField("body", string(body)).Debug("Body")
-		}
-		log.WithField("Status", r.Status).Fatal("Unexpected status")
 	}
 	title := getTitleFromPage(r.Body)
 	if title == "" {
