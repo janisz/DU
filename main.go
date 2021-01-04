@@ -114,7 +114,7 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 			return nil, fmt.Errorf("could not upload images: %w", err)
 		}
 
-		log.WithField("Text", tweetText).Info("Publishing...")
+		log.WithField("Text", tweetText).Info("Prepared")
 		newActs = append(newActs, twitter.StatusUpdateParams{
 			Status:             tweetText,
 			Lat:                &lat,
