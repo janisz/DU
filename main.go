@@ -107,7 +107,7 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 		tweetText := getTweetText(year, 0, lastTweetedId)
 		if tweetText == "" {
 			log.WithField("Year", year).WithField("Pos", lastTweetedId).Info("No data")
-			return nil, nil
+			break
 		}
 		mediaIds, err := uploadImages(year, 0, lastTweetedId, client)
 		if err != nil {
@@ -123,7 +123,6 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 			MediaIds:           mediaIds,
 		})
 	}
-	log.WithField("NewActs", len(newActs)).Info("Prepared")
 	return newActs, nil
 }
 
