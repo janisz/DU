@@ -123,6 +123,7 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 			MediaIds:           mediaIds,
 		})
 	}
+	log.WithField("NewActs", len(newActs)).Info("Prepared")
 	return newActs, nil
 }
 
