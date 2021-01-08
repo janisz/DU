@@ -396,8 +396,7 @@ func pdfUrl(year, nr, pos int) string {
 
 var handles = map[string]string{
 	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
-	"Ministra Edukacji i Nauki":                          "@Nauka_gov_PL",
-	"Ministra Edukacji Narodowej":                        "@MEN_gov_PL",
+	"Ministra Edukacji i Nauki":                          "@MEIN_gov_PL",
 	"Ministra Finansów ":                                 "@MF_gov_PL ",
 	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
 	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
