@@ -355,7 +355,7 @@ func getPDF(year int, nr int, pos int) (r *http.Response, err error) {
 	})
 }
 
-const MaxTitleLength = 200
+const MaxTitleLength = 230
 
 func getTitleFromPage(body io.ReadCloser) string {
 	z := html.NewTokenizer(body)
@@ -384,8 +384,8 @@ func getTitleFromPage(body io.ReadCloser) string {
 
 func prepareTweet(year, nr, id int, title string) string {
 	return strings.Join([]string{
-		fmt.Sprintf("Dz.U. %d poz. %d #DziennikUstaw", year, id), // 37 chars (Dz.U. YYYY poz. XXXX #DziennikUstaw\n)
-		trimTitle(title),     // < 280-37-23 ~ 200 (1 for new line)
+		fmt.Sprintf("Dz.U. %d poz. %d", year, id), // 22 chars (Dz.U. YYYY poz. XXXX\n)
+		trimTitle(title),     // < 280-22-23 ~ 230 (1 for new line)
 		pdfUrl(year, nr, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
 }
@@ -440,7 +440,18 @@ func trimTitle(title string) string {
 	if len(runes) < MaxTitleLength {
 		return title
 	}
-	return string(runes[:MaxTitleLength-1]) + "…"
+
+	split := strings.Split(title, " ")
+	title = ""
+	for _, part := range split {
+		t := title + part + " "
+		if len(t) > MaxTitleLength {
+			break
+		}
+		title = t
+	}
+
+	return title + "…"
 }
 
 func getIdFromTweet(s string) (year, id int) {

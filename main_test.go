@@ -22,23 +22,23 @@ func Test_prepareTweet(t *testing.T) {
 			Pos:   2,
 			Title: "Rozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej",
 			Year:  2020},
-			want: "Dz.U. 2020 poz. 2 #DziennikUstaw\nRozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
+			want: "Dz.U. 2020 poz. 2 \nRozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
 		},
 		{act: Item{
 			Pos:   2,
 			Title: "Oświadczenie Rządowe z dnia 18 grudnia 2019 r. w sprawie mocy obowiązującej w relacjach między Rzecząpospolitą Polską a Republiką Islandii Konwencji wielostronnej implementującej środki traktatowego prawa podatkowego mające na celu zapobieganie erozji podstawy opodatkowania i przenoszeniu zysku, sporządzonej w Paryżu dnia 24 listopada 2016 r., oraz jej zastosowania w realizacji postanowień Umowy między Rządem Rzeczypospolitej Polskiej a Rządem Republiki Islandii w sprawie unikania podwójnego opodatkowania i zapobiegania uchylaniu się od opodatkowania w zakresie podatków od dochodu i majątku, sporządzonej w Reykjaviku dnia 19 czerwca 1998 r., oraz w realizacji postanowień Protokołu między Rządem Rzeczypospolitej Polskiej a Rządem Republiki Islandii o zmianie Umowy między Rządem Rzeczypospolitej Polskiej a Rządem Republiki Islandii w sprawie unikania podwójnego opodatkowania i zapobiegania uchylaniu się od opodatkowania w zakresie podatków od dochodu i majątku, sporządzonej w Reykjaviku dnia 19 czerwca 1998 r., podpisanego w Reykjaviku dnia 16 maja 2012 r.",
 			Year:  2020},
-			want: "Dz.U. 2020 poz. 2 #DziennikUstaw\nOświadczenie Rządowe z dnia 18 grudnia 2019 r. w sprawie mocy obowiązującej w relacjach między Rzecząpospolitą Polską a Republiką Islandii Konwencji wielostronnej implementującej środki traktatowego …\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
+			want: "Dz.U. 2020 poz. 2 \nOświadczenie Rządowe z dnia 18 grudnia 2019 r. w sprawie mocy obowiązującej w relacjach między Rzecząpospolitą Polską a Republiką Islandii Konwencji wielostronnej implementującej środki traktatowego …\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
 		},
 		{act: Item{
 			Pos:   2146,
 			Title: "Rozporządzenie Ministra Edukacji i Nauki z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”", Year: 2020},
-			want: "Dz.U. 2020 poz. 2146 #DziennikUstaw\nRozporządzenie @Nauka_gov_PL z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”\nhttps://dziennikustaw.gov.pl/D2020000214601.pdf",
+			want: "Dz.U. 2020 poz. 2146 \nRozporządzenie @Nauka_gov_PL z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”\nhttps://dziennikustaw.gov.pl/D2020000214601.pdf",
 		},
 		{act: Item{
 			Pos:   241, Nr: 41,
 			Title: "Protokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.", Year: 1973},
-			want: "Dz.U. 1973 poz. 241 #DziennikUstaw\nProtokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dni…\nhttps://dziennikustaw.gov.pl/D1973041024101.pdf",
+			want: "Dz.U. 1973 poz. 241\nProtokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.\nhttps://dziennikustaw.gov.pl/D1973041024101.pdf",
 		},
 	}
 	for _, tt := range tests {
@@ -67,7 +67,7 @@ func Test_trimTweet(t *testing.T) {
 		},
 		{
 			title: "Obwieszczenie Ministra Zdrowia z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia Ministra Zdrowia w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych zawierających grzyby oraz uprawnień klasyfikatora grzybów i grzyboznawcy",
-			want:  "📢Obwieszczenie @MZ_gov_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_gov_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środk…",
+			want:  "📢Obwieszczenie @MZ_gov_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_gov_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych …",
 		},
 	}
 	for _, tt := range tests {
@@ -227,7 +227,7 @@ func Test_convertPDFToPng(t *testing.T) {
 func TestIntegrationGetTweetText(t *testing.T) {
 	t.Parallel()
 	text := getTweetText(1997,78,483 )
-	e := "Dz.U. 1997 poz. 483 #DziennikUstaw\nKonstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. uchwalona przez Zgromadzenie Narodowe w dniu 2 kwietnia 1997 r., przyjęta przez Naród w referendum konstytucyjnym w dniu 25 maja 1997 r…\nhttps://dziennikustaw.gov.pl/D1997078048301.pdf"
+	e := "Dz.U. 1997 poz. 483\nKonstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. uchwalona przez Zgromadzenie Narodowe w dniu 2 kwietnia 1997 r., przyjęta przez Naród w referendum konstytucyjnym w dniu 25 maja 1997 r., podpisana przez …\nhttps://dziennikustaw.gov.pl/D1997078048301.pdf"
 	if text != e {
 		t.Errorf("Expected %s got %s", e, text)
 	}
