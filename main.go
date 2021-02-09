@@ -251,7 +251,7 @@ func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, erro
 			tweetText = text
 			mediaIds, err = uploadImages(year, nr, pos, client)
 			if err != nil {
-				log.WithError(err).Error("could not upload images - skipping)
+				log.WithError(err).Error("could not upload images - skipping")
 				continue
 			}
 		}
