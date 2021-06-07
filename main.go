@@ -404,7 +404,7 @@ var handles = map[string]string{
 	"Ministra Infrastruktury":                            "@MI_gov_PL",
 	"Ministra Klimatu":                                   "@MKiS_gov_PL",
 	"Ministra Klimatu i Środowiska":                      "@MKiS_gov_PL",
-	"Ministra Kultury i Dziedzictwa Narodowego":          "@MKiDN_gov_PL",
+	"Ministra Kultury i Dziedzictwa Narodowego":          "@MKDNiS",
 	"Ministra Kultury, Dziedzictwa Narodowego i Sportu":  "@MKDNiS",
 	"Ministra Nauki i Szkolnictwa Wyższego":              "@MEIN_gov_PL",
 	"Ministra Obrony Narodowej":                          "@MON_gov_PL",
