@@ -30,6 +30,8 @@ var (
 	lat    = 52.22548
 	long   = 21.02839
 	truthy = true
+
+	userID int64 = 1334198651141361666
 )
 
 func main() {
@@ -45,6 +47,11 @@ func main() {
 
 	// Twitter client
 	client := twitter.NewClient(httpClient)
+
+	err := checkHandlesAreValid(client)
+	if err != nil {
+		log.WithError(err).Fatal("Some handles are invalid")
+	}
 
 	likeTweets(client)
 	responses, err := respondToTweets(client)
@@ -128,7 +135,7 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 
 func likeTweets(client *twitter.Client) {
 	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
-		UserID: 1334198651141361666,
+		UserID: userID,
 		Count:  1,
 	})
 	if err != nil {
@@ -427,6 +434,44 @@ var emojis = map[string]string{
 	"Obwieszczenie": "📢",
 	"Umowa":         "🤝",
 	"Porozumienie":  "🤝",
+}
+
+func checkHandlesAreValid(client *twitter.Client) error {
+
+	names := make(map[string]struct{}, len(handles))
+	for _, n := range handles {
+		names[strings.Trim(strings.ToLower(n), " ")] = struct{}{}
+	}
+
+	var checked []string
+
+	var cursor int64
+	for {
+		friends, _, err := client.Friends.List(&twitter.FriendListParams{
+			UserID: userID,
+			Cursor: cursor,
+		})
+		if err != nil {
+			return fmt.Errorf("could not get list of frineds: %q", err)
+		}
+
+		for _, u := range friends.Users {
+			handle := strings.ToLower("@" + u.ScreenName)
+			delete(names, handle)
+			checked = append(checked, handle)
+		}
+
+		cursor = friends.NextCursor
+		if cursor == 0 {
+			break
+		}
+	}
+	if len(names) != 0 {
+		return fmt.Errorf("not found %d handles: %v in %v", len(names), names, strings.Join(checked, ", "))
+	}
+
+	return nil
+
 }
 
 func trimTitle(title string) string {
