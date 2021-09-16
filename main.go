@@ -403,14 +403,18 @@ func pdfUrl(year, nr, pos int) string {
 }
 
 var handles = map[string]string{
+	"Agencji Restrukturyzacji i Modernizacji Rolnictwa":  "@ARiMR_GOV_PL",
+	"Centralnego Biura Antykorupcyjnego":                 "@CBAgovPL",
+	"Centralnym Biurze Antykorupcyjnym":                  "@CBAgovPL",
+	"Głównego Inspektora Transportu Drogowego":           "@ITD_gov",
 	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
 	"Ministra Edukacji i Nauki":                          "@MEIN_gov_PL",
 	"Ministra Finansów ":                                 "@MF_gov_PL ",
 	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
 	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
 	"Ministra Infrastruktury":                            "@MI_gov_PL",
-	"Ministra Klimatu":                                   "@MKiS_gov_PL",
 	"Ministra Klimatu i Środowiska":                      "@MKiS_gov_PL",
+	"Ministra Klimatu":                                   "@MKiS_gov_PL",
 	"Ministra Kultury i Dziedzictwa Narodowego":          "@MKDNiS",
 	"Ministra Kultury, Dziedzictwa Narodowego i Sportu":  "@MKDNiS",
 	"Ministra Nauki i Szkolnictwa Wyższego":              "@MEIN_gov_PL",
@@ -424,9 +428,11 @@ var handles = map[string]string{
 	"Ministra Sprawiedliwości":                           "@MS_gov_PL",
 	"Ministra Zdrowia":                                   "@MZ_gov_PL",
 	"Państwowej Komisji Wyborczej":                       "@PanstwKomWyb",
+	"Państwowej Straży Pożarnej":                         "@KGPSP",
 	"Prezesa Rady Ministrów":                             "@PremierRP",
 	"Prezydenta Rzeczypospolitej Polskiej":               "@PrezydentPL",
 	"Sejmu Rzeczypospolitej Polskiej":                    "@KancelariaSejmu",
+	"Straży Granicznej":                                  "@Straz_Graniczna",
 	"Trybunału Konstytucyjnego":                          "@TK_gov_PL",
 }
 
