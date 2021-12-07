@@ -48,10 +48,10 @@ func main() {
 	// Twitter client
 	client := twitter.NewClient(httpClient)
 
-	err := checkHandlesAreValid(client)
-	if err != nil {
-		log.WithError(err).Fatal("Some handles are invalid")
-	}
+// 	err := checkHandlesAreValid(client)
+// 	if err != nil {
+// 		log.WithError(err).Fatal("Some handles are invalid")
+// 	}
 
 	likeTweets(client)
 	responses, err := respondToTweets(client)
