@@ -391,8 +391,12 @@ func getTitleFromPage(body io.ReadCloser) string {
 }
 
 func prepareTweet(year, nr, id int, title string) string {
+	poz := fmt.Sprintf("%d", id)
+	if id == 100 {
+		poz = "💯"
+	}
 	return strings.Join([]string{
-		fmt.Sprintf("Dz.U. %d poz. %d", year, id), // 22 chars (Dz.U. YYYY poz. XXXX\n)
+		fmt.Sprintf("Dz.U. %d poz. %s", year, poz), // 22 chars (Dz.U. YYYY poz. XXXX\n)
 		trimTitle(title),     // < 280-22-23 ~ 230 (1 for new line)
 		pdfUrl(year, nr, id), // 23 chars (The current length of a URL in a Tweet is 23 characters, even if the length of the URL would normally be shorter.)
 	}, "\n")
