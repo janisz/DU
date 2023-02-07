@@ -34,6 +34,8 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+      - name: Fix DNS
+        run: sudo sh -c "echo \"185.41.93.212 dziennikustaw.gov.pl\" >> /etc/hosts"
       - name: Run tests
         run: go test -v ./... -timeout 30s
       - name: Run boot
