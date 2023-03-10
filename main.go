@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"image/jpeg"
 	"io"
@@ -276,11 +277,15 @@ func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, erro
 	return responses, nil
 }
 
+var client = &http.Client{Transport: &http.Transport{
+	TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+}}
+
 func getTweetText(year, nr, pos int) string {
 	var r *http.Response
 	err := retry.Do(func() error {
 		var err error
-		r, err = http.DefaultClient.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
+		r, err = client.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
 		if err != nil {
 			return err
 		}
@@ -347,7 +352,7 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 func getPDF(year int, nr int, pos int) (r *http.Response, err error) {
 	url := pdfUrl(year, nr, pos)
 	return r, retry.Do(func() error {
-		r, err = http.DefaultClient.Get(url)
+		r, err = client.Get(url)
 		log.WithField("URL", url).Infof("GET images")
 		if err != nil {
 			return fmt.Errorf("could not fetch images %w", err)
