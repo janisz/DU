@@ -285,7 +285,12 @@ func getTweetText(year, nr, pos int) string {
 	var r *http.Response
 	err := retry.Do(func() error {
 		var err error
-		r, err = client.Get(fmt.Sprintf("%s/DU/%d/%d", url, year, pos))
+		req, err := http.NewRequest("GET", fmt.Sprintf("%s/DU/%d/%d", url, year, pos), nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Android 4.4; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0")
+		r, err = client.Do(req)
 		if err != nil {
 			return err
 		}
@@ -352,7 +357,12 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 func getPDF(year int, nr int, pos int) (r *http.Response, err error) {
 	url := pdfUrl(year, nr, pos)
 	return r, retry.Do(func() error {
-		r, err = client.Get(url)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return err
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Android 4.4; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0")
+		r, err = client.Do(req)
 		log.WithField("URL", url).Infof("GET images")
 		if err != nil {
 			return fmt.Errorf("could not fetch images %w", err)
