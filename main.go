@@ -391,7 +391,7 @@ func uploadImages(year, nr, pos int, client *oldApi.Client) ([]string, error) {
 			log.WithField("MediaID", mID).Debugf("Still processing: %#v", resp.ProcessingInfo)
 			for {
 				time.Sleep(100 * time.Millisecond)
-				log.WithField("MediaID", mID).Debugf("Checking upload status %d", mID)
+				log.WithField("MediaID", mID).Debugf("Checking upload status %s", mID)
 				r, _, err := client.Media.Status(resp.MediaID)
 				if err != nil {
 					return nil, err
