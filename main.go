@@ -176,14 +176,18 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
 		}
 
 		log.WithField("Text", tweetText).Info("Prepared")
-		newActs = append(newActs, twitter.CreateTweetRequest{
-			DirectMessageDeepLink: "",
-			ForSuperFollowersOnly: false,
-			QuoteTweetID:          "",
-			Text:                  tweetText,
-			ReplySettings:         "",
-			Media: &twitter.CreateTweetMedia{
+		var media *twitter.CreateTweetMedia
+		if len(mediaIds) > 0 {
+			media = &twitter.CreateTweetMedia{
 				IDs: mediaIds,
+			}
+		}
+		newActs = append(newActs, twitter.CreateTweetRequest{
+			ForSuperFollowersOnly: false,
+			Text:                  tweetText,
+			Media:                 media,
+			Geo: &twitter.CreateTweetGeo{
+				PlaceID: "535f0c2de0121451",
 			},
 		})
 	}
@@ -308,11 +312,15 @@ func respondToTweets(client *twitter.Client, old *oldApi.Client) ([]twitter.Crea
 			}
 		}
 
-		responses = append(responses, twitter.CreateTweetRequest{
-			Text: tweetText,
-			Media: &twitter.CreateTweetMedia{
+		var media *twitter.CreateTweetMedia
+		if len(mediaIds) > 0 {
+			media = &twitter.CreateTweetMedia{
 				IDs: mediaIds,
-			},
+			}
+		}
+		responses = append(responses, twitter.CreateTweetRequest{
+			Text:  tweetText,
+			Media: media,
 			Reply: &twitter.CreateTweetReply{
 				InReplyToTweetID: tweet.ID,
 			},
@@ -377,11 +385,13 @@ func uploadImages(year, nr, pos int, client *oldApi.Client) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
+		mID := resp.MediaIDString
+
 		if resp.ProcessingInfo != nil {
-			log.WithField("MediaID", resp.MediaID).Debugf("Still processing: %#v", resp.ProcessingInfo)
+			log.WithField("MediaID", mID).Debugf("Still processing: %#v", resp.ProcessingInfo)
 			for {
 				time.Sleep(100 * time.Millisecond)
-				log.WithField("MediaID", resp.MediaID).Debugf("Checking upload status %d", resp.MediaID)
+				log.WithField("MediaID", mID).Debugf("Checking upload status %d", mID)
 				r, _, err := client.Media.Status(resp.MediaID)
 				if err != nil {
 					return nil, err
@@ -389,11 +399,11 @@ func uploadImages(year, nr, pos int, client *oldApi.Client) ([]string, error) {
 				if r.ProcessingInfo == nil {
 					break
 				}
-				log.WithField("MediaID", resp.MediaID).Debugf("Still processing: %#v", r.ProcessingInfo)
+				log.WithField("MediaID", mID).Debugf("Still processing: %#v", r.ProcessingInfo)
 			}
 		}
-		log.WithField("MediaID", resp.MediaID).Debug("Upload Succesful")
-		mediaIds = append(mediaIds, fmt.Sprintf("%d", resp.MediaID))
+		log.WithField("MediaID", mID).Debug("Upload Succesful")
+		mediaIds = append(mediaIds, mID)
 	}
 	return mediaIds, nil
 }
