@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"image/jpeg"
 	"io"
 	"io/ioutil"
@@ -14,8 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dghubble/go-twitter/twitter"
+	oldApi "github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
+	"github.com/g8rswimmer/go-twitter/v2"
 
 	"golang.org/x/net/html"
 
@@ -28,12 +31,15 @@ import (
 const url = "https://dziennikustaw.gov.pl"
 
 var (
-	lat    = 52.22548
-	long   = 21.02839
-	truthy = true
+	lat  = 52.22548
+	long = 21.02839
 
-	userID int64 = 1334198651141361666
+	userID = "1334198651141361666"
 )
+
+type authorizer struct{}
+
+func (a *authorizer) Add(_ *http.Request) {}
 
 func main() {
 
@@ -41,63 +47,110 @@ func main() {
 
 	log.Info("Dziennik Ustaw")
 
+	ctx := context.Background()
+
 	config := oauth1.NewConfig(os.Getenv("consumerKey"), os.Getenv("consumerSecret"))
 	token := oauth1.NewToken(os.Getenv("accessToken"), os.Getenv("accessSecret"))
 	// http.Client will automatically authorize Requests
 	httpClient := config.Client(oauth1.NoContext, token)
 
 	// Twitter client
-	client := twitter.NewClient(httpClient)
+	client := &twitter.Client{
+		Authorizer: &authorizer{},
+		Client:     httpClient,
+		Host:       "https://api.twitter.com",
+	}
+	oldClient := oldApi.NewClient(httpClient)
 
-// 	err := checkHandlesAreValid(client)
-// 	if err != nil {
-// 		log.WithError(err).Fatal("Some handles are invalid")
-// 	}
-
-	likeTweets(client)
-	responses, err := respondToTweets(client)
+	u, err := client.AuthUserLookup(context.Background(), twitter.UserLookupOpts{
+		UserFields: []twitter.UserField{
+			// UserFieldCreatedAt is the UTC datetime that the user account was created on Twitter.
+			twitter.UserFieldCreatedAt,
+			// UserFieldDescription is the text of this user's profile description (also known as bio), if the user provided one.
+			twitter.UserFieldDescription,
+			// UserFieldEntities contains details about text that has a special meaning in the user's description.
+			twitter.UserFieldEntities,
+			// UserFieldID is the unique identifier of this user.
+			twitter.UserFieldID,
+			// UserFieldLocation is the location specified in the user's profile, if the user provided one.
+			twitter.UserFieldLocation,
+			// UserFieldName is the name of the user, as they’ve defined it on their profile
+			twitter.UserFieldName,
+			// UserFieldPinnedTweetID is the unique identifier of this user's pinned Tweet.
+			twitter.UserFieldPinnedTweetID,
+			// UserFieldProfileImageURL is the URL to the profile image for this user, as shown on the user's profile.
+			twitter.UserFieldProfileImageURL,
+			// UserFieldProtected indicates if this user has chosen to protect their Tweets (in other words, if this user's Tweets are private).
+			twitter.UserFieldProtected,
+			// UserFieldPublicMetrics contains details about activity for this user.
+			twitter.UserFieldPublicMetrics,
+			// UserFieldURL is the URL specified in the user's profile, if present.
+			twitter.UserFieldURL,
+			// UserFieldUserName is the Twitter screen name, handle, or alias that this user identifies themselves with
+			twitter.UserFieldUserName,
+			// UserFieldVerified indicates if this user is a verified Twitter User.
+			twitter.UserFieldVerified,
+			// UserFieldWithHeld contains withholding details
+			twitter.UserFieldWithHeld,
+		},
+	})
 	if err != nil {
 		log.WithError(err).Fatal("Could not prepare responses")
 	}
+	log.WithFields(logLimit(u.RateLimit)).Info(spew.Sdump(u.Raw))
 
-	newActs, err := prepareNewActs(client)
+	// 	err := checkHandlesAreValid(client)
+	// 	if err != nil {
+	// 		log.WithError(err).Fatal("Some handles are invalid")
+	// 	}
+
+	//likeTweets(client)
+	//responses, err := respondToTweets(client, oldClient)
+	//if err != nil {
+	//	log.WithError(err).Fatal("Could not prepare responses")
+	//}
+
+	newActs, err := prepareNewActs(oldClient)
 	if err != nil {
 		log.WithError(err).Fatal("Could not prepare new acts")
 	}
 
-	log.WithField("NewActs", len(newActs)).WithField("Responses", len(responses)).Info("Publishing tweets")
+	log.WithField("NewActs", len(newActs)).Info("Publishing tweets")
 	if _, ok := os.LookupEnv("DRY"); ok {
 		log.Warn("DRY RUN")
 		return
 	}
-	for _, tweet := range append(newActs, responses...) {
-		t, _, err := client.Statuses.Update(tweet.Status, &tweet)
+	for _, tw := range append(newActs) {
+		t, err := client.CreateTweet(ctx, tw)
 		if err != nil {
 			log.WithError(err).Fatal("Could not publish tweet")
 		}
-		log.WithFields(logTweet(*t)).Info("Published")
+		log.WithField("Text", t.Tweet.Text).Info("Published")
+		err = os.WriteFile("last.txt", []byte(tw.Text), 0x777)
+		if err != nil {
+			log.WithError(err).Fatal("Could save published tweet")
+		}
 	}
 
 }
 
-func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error) {
-	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
-		Count:          1,
-		ExcludeReplies: &truthy,
-		TweetMode:      "extended",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not get tweets from timeline: %w", err)
-	}
-
-	if len(tweets) < 1 {
-		return nil, fmt.Errorf("no tweets")
-	}
-
-	tweet := tweets[0]
-	log.WithFields(logTweet(tweet)).Debug("Latest tweet from timeline")
-
-	lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.FullText)
+func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
+	//tweets, err := client.UserTweetTimeline(context.Background(), userID, twitter.UserTweetTimelineOpts{
+	//	Excludes: []twitter.Exclude{twitter.ExcludeReplies, twitter.ExcludeRetweets},
+	//})
+	//if err != nil {
+	//	return nil, fmt.Errorf("could not get tweets from timeline: %w", err)
+	//}
+	//
+	//if len(tweets.Raw.Tweets) < 1 {
+	//	return nil, fmt.Errorf("no tweets")
+	//}
+	//
+	//tweet := tweets.Raw.Tweets[0]
+	//log.WithFields(logTweet(tweet)).WithFields(logLimit(tweets.RateLimit)).Debug("Latest tweet from timeline")
+	//
+	//lastTweetedYear, lastTweetedId := getIdFromTweet(tweet.Text)
+	lastTweetedYear, lastTweetedId := getLastId()
 	if lastTweetedYear*lastTweetedId == 0 {
 		log.WithField("Year", lastTweetedYear).WithField("Pos", lastTweetedId).Fatal("There is a problem with obtaining last tweeted act")
 	}
@@ -108,7 +161,7 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
-	newActs := []twitter.StatusUpdateParams{}
+	var newActs []twitter.CreateTweetRequest
 	for {
 		lastTweetedId++
 
@@ -117,38 +170,40 @@ func prepareNewActs(client *twitter.Client) ([]twitter.StatusUpdateParams, error
 			log.WithField("Year", year).WithField("Pos", lastTweetedId).Info("No data")
 			break
 		}
-		mediaIds, err := uploadImages(year, 0, lastTweetedId, client)
+		mediaIds, err := uploadImages(year, 0, lastTweetedId, old)
 		if err != nil {
 			return nil, fmt.Errorf("could not upload images: %w", err)
 		}
 
 		log.WithField("Text", tweetText).Info("Prepared")
-		newActs = append(newActs, twitter.StatusUpdateParams{
-			Status:             tweetText,
-			Lat:                &lat,
-			Long:               &long,
-			DisplayCoordinates: &truthy,
-			MediaIds:           mediaIds,
+		newActs = append(newActs, twitter.CreateTweetRequest{
+			DirectMessageDeepLink: "",
+			ForSuperFollowersOnly: false,
+			QuoteTweetID:          "",
+			Text:                  tweetText,
+			ReplySettings:         "",
+			Media: &twitter.CreateTweetMedia{
+				IDs: mediaIds,
+			},
 		})
 	}
 	return newActs, nil
 }
 
 func likeTweets(client *twitter.Client) {
-	likes, _, err := client.Favorites.List(&twitter.FavoriteListParams{
-		UserID: userID,
-		Count:  1,
+	likes, err := client.UserLikesLookup(context.Background(), userID, twitter.UserLikesLookupOpts{
+		MaxResults: 10,
 	})
 	if err != nil {
 		log.WithError(err).Error("Could not find tweets")
 		return
 	}
-	if len(likes) < 1 {
+	if len(likes.Raw.Tweets) < 1 {
 		log.Infof("No likes since last time")
 		return
 	}
 
-	log.WithFields(logTweet(likes[0])).Info("Latest liked tweet")
+	log.WithFields(logTweet(likes.Raw.Tweets[0])).Info("Latest liked tweet")
 
 	keywords := []string{
 		"#DziennikUstaw", "Dziennik Ustaw", "Dzienniku Ustaw", "Dziennika Ustaw", "Dziennikiem Ustaw", "Dziennikowi Ustaw",
@@ -156,71 +211,63 @@ func likeTweets(client *twitter.Client) {
 
 	for _, keyword := range keywords {
 		log.WithField("Keyword", keyword).Debug("Search for tweets")
-		t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-			Query:      "-from:Dziennik_Ustaw " + keyword,
-			Lang:       "pl",
-			ResultType: "recent",
-			SinceID:    likes[0].ID,
-			Count:      100,
-			TweetMode:  "extended",
+		t, err := client.TweetSearch(context.Background(), "-from:Dziennik_Ustaw "+keyword, twitter.TweetSearchOpts{
+			SinceID: likes.Raw.Tweets[0].ID,
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Could not find tweets")
 		}
-		log.Infof("Found %d tweets to like", len(t.Statuses))
-		for _, tweet := range t.Statuses {
+		log.Infof("Found %d tweets to like", len(t.Raw.Tweets))
+		for _, tweet := range t.Raw.Tweets {
 			log.WithFields(logTweet(tweet)).Info("Like tweet")
 			if _, ok := os.LookupEnv("DRY"); ok {
 				log.Warn("DRY RUN")
 				continue
 			}
-			liked, _, err := client.Favorites.Create(&twitter.FavoriteCreateParams{ID: tweet.ID})
+			liked, err := client.UserLikes(context.Background(), userID, tweet.ID)
 			if err != nil {
 				log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
 				continue
 			}
-			log.WithField("ID", liked.ID).WithField("❤ ", liked.FavoriteCount).WithField("⮔ ", liked.RetweetCount).Infof("Liked tweed %d", tweet.ID)
+			log.WithFields(logLimit(liked.RateLimit)).Infof("Liked tweed %s", tweet.ID)
 		}
 	}
 }
 
-func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, error) {
-	flasy := false
-	tweets, _, err := client.Timelines.UserTimeline(&twitter.UserTimelineParams{
-		Count:          1,
-		ExcludeReplies: &flasy,
-		TweetMode:      "extended",
+func respondToTweets(client *twitter.Client, old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
+	tweets, err := client.UserTweetTimeline(context.Background(), userID, twitter.UserTweetTimelineOpts{
+		Excludes:   []twitter.Exclude{twitter.ExcludeRetweets, twitter.ExcludeReplies},
+		StartTime:  time.Time{},
+		EndTime:    time.Time{},
+		MaxResults: 5,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not get tweets from timeline: %w", err)
 	}
-	if len(tweets) < 1 {
+	if len(tweets.Raw.Tweets) < 1 {
 		log.Infof("No tweets since last time")
 		return nil, nil
 	}
 
-	log.WithFields(logTweet(tweets[0])).Info("Latest responded tweet")
+	log.WithFields(logTweet(tweets.Raw.Tweets[0])).Info("Latest responded tweet")
 
 	log.WithField("Keyword", "Dz.U.").Debug("Search for tweets to respond")
-	t, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-		Query:      "-from:Dziennik_Ustaw AND -filter:retweets AND \"Dz.U.\"",
-		Lang:       "pl",
-		ResultType: "recent",
-		SinceID:    tweets[0].ID,
-		Count:      100,
-		TweetMode:  "extended",
+	t, err := client.TweetSearch(context.Background(), "-from:Dziennik_Ustaw AND -filter:retweets AND \"Dz.U.\"", twitter.TweetSearchOpts{
+		MaxResults: 10,
+		SortOrder:  twitter.TweetSearchSortOrderRecency,
+		SinceID:    tweets.Raw.Tweets[0].ID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not find tweets: %w", err)
 	}
-	log.Infof("Found %d tweets to responde", len(t.Statuses))
+	log.WithFields(logLimit(t.RateLimit)).Infof("Found %d tweets to responde", len(t.Raw.Tweets))
 
-	responses := make([]twitter.StatusUpdateParams, 0, len(t.Statuses))
+	responses := make([]twitter.CreateTweetRequest, 0, len(t.Raw.Tweets))
 
-	for _, tweet := range t.Statuses {
+	for _, tweet := range t.Raw.Tweets {
 		log.WithFields(logTweet(tweet)).Info("Respond tweet")
 
-		year, nr, pos := extractActFromTweet(tweet.FullText)
+		year, nr, pos := extractActFromTweet(tweet.Text)
 		if year == 0 && nr == 0 {
 			log.WithField("ID", tweet.ID).Debug("Use current year")
 			year = time.Now().Year()
@@ -234,21 +281,18 @@ func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, erro
 			continue
 		}
 
-		previouslyTweeted, _, err := client.Search.Tweets(&twitter.SearchTweetParams{
-			Query:      fmt.Sprintf("from:Dziennik_Ustaw AND \"Dz.U. %d Poz. %d\"", year, pos),
-			Lang:       "pl",
-			ResultType: "recent",
-			Count:      1,
-			TweetMode:  "extended",
+		previouslyTweeted, err := client.TweetSearch(context.Background(), fmt.Sprintf("from:Dziennik_Ustaw AND \"Dz.U. %d Poz. %d\"", year, pos), twitter.TweetSearchOpts{
+			SortOrder:  twitter.TweetSearchSortOrderRecency,
+			MaxResults: 10,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("could not find tweets with responses: %w", err)
 		}
 		tweetText := ""
-		var mediaIds []int64
-		if len(previouslyTweeted.Statuses) > 0 {
-			log.WithFields(logTweet(previouslyTweeted.Statuses[0])).Infof("Found tweet with act")
-			tweetText = fmt.Sprintf("https://twitter.com/Dziennik_Ustaw/status/%d", previouslyTweeted.Statuses[0].ID)
+		var mediaIds []string
+		if len(previouslyTweeted.Raw.Tweets) > 0 {
+			log.WithFields(logTweet(previouslyTweeted.Raw.Tweets[0])).Infof("Found tweet with act")
+			tweetText = fmt.Sprintf("https://twitter.com/Dziennik_Ustaw/status/%s", previouslyTweeted.Raw.Tweets[0].ID)
 		} else {
 			log.Infof("Preparing new tweet")
 			text := getTweetText(year, nr, pos)
@@ -257,21 +301,21 @@ func respondToTweets(client *twitter.Client) ([]twitter.StatusUpdateParams, erro
 				continue
 			}
 			tweetText = text
-			mediaIds, err = uploadImages(year, nr, pos, client)
+			mediaIds, err = uploadImages(year, nr, pos, old)
 			if err != nil {
 				log.WithError(err).Error("could not upload images - skipping")
 				continue
 			}
 		}
 
-		responses = append(responses, twitter.StatusUpdateParams{
-			Status:                    tweetText,
-			InReplyToStatusID:         tweet.ID,
-			AutoPopulateReplyMetadata: &truthy,
-			MediaIds:                  mediaIds,
-			Lat:                       &lat,
-			Long:                      &long,
-			DisplayCoordinates:        &truthy,
+		responses = append(responses, twitter.CreateTweetRequest{
+			Text: tweetText,
+			Media: &twitter.CreateTweetMedia{
+				IDs: mediaIds,
+			},
+			Reply: &twitter.CreateTweetReply{
+				InReplyToTweetID: tweet.ID,
+			},
 		})
 	}
 	return responses, nil
@@ -313,7 +357,7 @@ func getTweetText(year, nr, pos int) string {
 	return prepareTweet(year, nr, pos, title)
 }
 
-func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
+func uploadImages(year, nr, pos int, client *oldApi.Client) ([]string, error) {
 	r, err := getPDF(year, nr, pos)
 	if err != nil {
 		return nil, err
@@ -324,7 +368,7 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 		return nil, err
 	}
 	log.Info("Pages to upload: ", len(pages))
-	mediaIds := make([]int64, 0, len(pages))
+	mediaIds := make([]string, 0, len(pages))
 	if _, ok := os.LookupEnv("DRY"); ok {
 		return nil, nil
 	}
@@ -349,7 +393,7 @@ func uploadImages(year, nr, pos int, client *twitter.Client) ([]int64, error) {
 			}
 		}
 		log.WithField("MediaID", resp.MediaID).Debug("Upload Succesful")
-		mediaIds = append(mediaIds, resp.MediaID)
+		mediaIds = append(mediaIds, fmt.Sprintf("%d", resp.MediaID))
 	}
 	return mediaIds, nil
 }
@@ -462,43 +506,43 @@ var emojis = map[string]string{
 	"Porozumienie":  "🤝",
 }
 
-func checkHandlesAreValid(client *twitter.Client) error {
-
-	names := make(map[string]struct{}, len(handles))
-	for _, n := range handles {
-		names[strings.Trim(strings.ToLower(n), " ")] = struct{}{}
-	}
-
-	var checked []string
-
-	var cursor int64
-	for {
-		friends, _, err := client.Friends.List(&twitter.FriendListParams{
-			UserID: userID,
-			Cursor: cursor,
-		})
-		if err != nil {
-			return fmt.Errorf("could not get list of frineds: %q", err)
-		}
-
-		for _, u := range friends.Users {
-			handle := strings.ToLower("@" + u.ScreenName)
-			delete(names, handle)
-			checked = append(checked, handle)
-		}
-
-		cursor = friends.NextCursor
-		if cursor == 0 {
-			break
-		}
-	}
-	if len(names) != 0 {
-		return fmt.Errorf("not found %d handles: %v in %v", len(names), names, strings.Join(checked, ", "))
-	}
-
-	return nil
-
-}
+//func checkHandlesAreValid(client *twitter.Client) error {
+//
+//	names := make(map[string]struct{}, len(handles))
+//	for _, n := range handles {
+//		names[strings.Trim(strings.ToLower(n), " ")] = struct{}{}
+//	}
+//
+//	var checked []string
+//
+//	var cursor int64
+//	for {
+//		friends, _, err := client.Friends.List(&twitter.FriendListParams{
+//			UserID: userID,
+//			Cursor: cursor,
+//		})
+//		if err != nil {
+//			return fmt.Errorf("could not get list of frineds: %q", err)
+//		}
+//
+//		for _, u := range friends.Users {
+//			handle := strings.ToLower("@" + u.ScreenName)
+//			delete(names, handle)
+//			checked = append(checked, handle)
+//		}
+//
+//		cursor = friends.NextCursor
+//		if cursor == 0 {
+//			break
+//		}
+//	}
+//	if len(names) != 0 {
+//		return fmt.Errorf("not found %d handles: %v in %v", len(names), names, strings.Join(checked, ", "))
+//	}
+//
+//	return nil
+//
+//}
 
 func trimTitle(title string) string {
 	for name, handle := range handles {
@@ -525,6 +569,15 @@ func trimTitle(title string) string {
 	}
 
 	return title + "…"
+}
+
+func getLastId() (year, id int) {
+	file, err := os.ReadFile("last.txt")
+	if err != nil {
+		log.WithError(err)
+		return 0, 0
+	}
+	return getIdFromTweet(string(file))
 }
 
 func getIdFromTweet(s string) (year, id int) {
@@ -602,12 +655,20 @@ func extractActFromTweet(tweet string) (year, nr, pos int) {
 	return year, nr, pos
 }
 
-func logTweet(t twitter.Tweet) log.Fields {
+func logTweet(t *twitter.TweetObj) log.Fields {
 	return log.Fields{
 		"ID":   t.ID,
 		"Date": t.CreatedAt,
-		"❤ ":   t.FavoriteCount,
-		"⮔ ":   t.RetweetCount,
-		"Text": t.FullText,
+		"❤ ":   t.PublicMetrics.Likes,
+		"⮔ ":   t.PublicMetrics.Retweets,
+		"Text": t.Text,
+	}
+}
+
+func logLimit(t *twitter.RateLimit) log.Fields {
+	return log.Fields{
+		"Limit":     t.Limit,
+		"Reset":     t.Reset.Time().Sub(time.Now()).String(),
+		"Remaining": t.Remaining,
 	}
 }
