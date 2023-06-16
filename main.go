@@ -139,7 +139,8 @@ func getTweetText(year, nr, pos int) string {
 		if err != nil {
 			return err
 		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Android 4.4; Tablet; rv:41.0) Gecko/41.0 Firefox/41.0")
+		req.Header.Set("User-Agent", "curl/7.58.0")
+		req.Header.Set("Accept", "*/*")
 		r, err = client.Do(req)
 		if err != nil {
 			return err
