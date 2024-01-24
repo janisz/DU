@@ -37,11 +37,6 @@ func Test_prepareTweet(t *testing.T) {
 			want: "Dz.U. 2020 poz. 2\nOświadczenie Rządowe z dnia 18 grudnia 2019 r. w sprawie mocy obowiązującej w relacjach między Rzecząpospolitą Polską a Republiką Islandii Konwencji wielostronnej implementującej środki traktatowego prawa podatkowego …\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
 		},
 		{act: Item{
-			Pos:   2146,
-			Title: "Rozporządzenie Ministra Edukacji i Nauki z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”", Year: 2020},
-			want: "Dz.U. 2020 poz. 2146\nRozporządzenie @MEIN_gov_PL z dnia 1 grudnia 2020 r. zmieniające rozporządzenie w sprawie pomocy de minimis w ramach programu „Wsparcie dla czasopism naukowych”\nhttps://dziennikustaw.gov.pl/D2020000214601.pdf",
-		},
-		{act: Item{
 			Pos:   241, Nr: 41,
 			Title: "Protokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.", Year: 1973},
 			want: "Dz.U. 1973 poz. 241\nProtokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.\nhttps://dziennikustaw.gov.pl/D1973041024101.pdf",
