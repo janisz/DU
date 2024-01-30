@@ -304,7 +304,6 @@ var handles = map[string]string{
 	"Państwowej Straży Pożarnej":                         "@KGPSP",
 	"Prezesa Rady Ministrów":                             "@PremierRP",
 	"Prezydenta Rzeczypospolitej Polskiej":               "@PrezydentPL",
-	"Sejmu Rzeczypospolitej Polskiej":                    "@KancelariaSejmu",
 	"Straży Granicznej":                                  "@Straz_Graniczna",
 	"Trybunału Konstytucyjnego":                          "@TK_gov_PL",
 }
