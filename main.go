@@ -292,6 +292,7 @@ var handles = map[string]string{
 	"Ministra Nauki i Szkolnictwa Wyższego":              "@MEIN_gov_PL",
 	"Ministra Obrony Narodowej":                          "@MON_gov_PL",
 	"Ministra Rodziny i Polityki Społecznej":             "@MRiPS_gov_PL",
+	"Ministra Rodziny, Pracy i Polityki Społecznej":      "@MRiPS_gov_PL",
 	"Ministra Rolnictwa i Rozwoju Wsi":                   "@MRiRW_gov_PL",
 	"Ministra Rozwoju i Technologii":                     "@MRiTGOVPL",
 	"Ministra Rozwoju, Pracy i Technologii":              "@MRiTGOVPL",
