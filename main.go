@@ -94,7 +94,7 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
 	var newActs []twitter.CreateTweetRequest
-	for {
+	for i:=0;i<5;i++ {
 		lastTweetedId++
 
 		tweetText := getTweetText(year, 0, lastTweetedId)
