@@ -1,6 +1,6 @@
 module github.com/janisz/DU
 
-go 1.15
+go 1.23.0
 
 replace github.com/dghubble/go-twitter => github.com/janisz/go-twitter v0.0.0-20201206102041-3fe237ed29f3
 
@@ -10,8 +10,13 @@ require (
 	github.com/dghubble/oauth1 v0.7.3
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
 	github.com/gen2brain/go-fitz v1.23.7
-	github.com/kr/pretty v0.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.35.0
-	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
+	golang.org/x/net v0.40.0
+)
+
+require (
+	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
+	github.com/dghubble/sling v1.3.0 // indirect
+	github.com/google/go-querystring v1.0.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 )
