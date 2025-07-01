@@ -11,7 +11,7 @@ require (
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
 	github.com/gen2brain/go-fitz v1.23.7
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.40.0
+	golang.org/x/net v0.41.0
 )
 
 require (
