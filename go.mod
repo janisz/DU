@@ -9,7 +9,7 @@ require (
 	github.com/dghubble/go-twitter v0.0.0-00010101000000-000000000000
 	github.com/dghubble/oauth1 v0.7.3
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
-	github.com/gen2brain/go-fitz v1.23.7
+	github.com/gen2brain/go-fitz v1.24.15
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.41.0
 )
@@ -17,6 +17,8 @@ require (
 require (
 	github.com/cenkalti/backoff v2.1.1+incompatible // indirect
 	github.com/dghubble/sling v1.3.0 // indirect
+	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
+	github.com/jupiterrider/ffi v0.5.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
 )
