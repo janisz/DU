@@ -11,7 +11,7 @@ require (
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
 	github.com/gen2brain/go-fitz v1.24.15
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.41.0
+	golang.org/x/net v0.42.0
 )
 
 require (
@@ -20,5 +20,5 @@ require (
 	github.com/ebitengine/purego v0.8.4 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
 	github.com/jupiterrider/ffi v0.5.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 )
