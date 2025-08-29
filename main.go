@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	_ "embed"
 	"fmt"
 	"image/jpeg"
 	"io"
@@ -214,18 +215,14 @@ func getTweetText(year, nr, pos int) string {
 	return prepareTweet(year, nr, pos, title)
 }
 
+//go:embed prompt.txt
+var prompt string
+
 func getTweetSummary(ctx context.Context, text string) (string, error) {
 	client := openai.NewClient()
 	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(`Jesteś pracownikiem Rządowego Centrum Legislacji.
-Twoim zadaniem jest tworzenie tweetów o najnowszych publikacjach w Dzienniku Ustaw.
-Zawsze podsumowuj zmiany w ustawach (na podstawie tekstu) w formie jednego tweeta (maks. 280 znaków).
-Używaj potocznego języka, unikaj urzędowego stylu.
-Wyróżnij najważniejszą zmianę i – jeśli pasuje – dodaj krótkie hashtagi lub użyj ich w tekście.
-Skupiaj się na praktycznym znaczeniu dla obywateli i przedsiębiorców.
-Nie dodawaj infromacji takich jak data, pozycja, autor czy organ.
-Ważne jest tylko co się zmienia.`),
+			openai.SystemMessage(prompt),
 			openai.UserMessage(text),
 		},
 		Model: openai.ChatModelGPT5Nano,
