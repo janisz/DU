@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/gen2brain/go-fitz"
 )
 
 type Item struct {
@@ -37,7 +41,7 @@ func Test_prepareTweet(t *testing.T) {
 			want: "Dz.U. 2020 poz. 2\nOświadczenie Rządowe z dnia 18 grudnia 2019 r. w sprawie mocy obowiązującej w relacjach między Rzecząpospolitą Polską a Republiką Islandii Konwencji wielostronnej implementującej środki traktatowego prawa podatkowego …\nhttps://dziennikustaw.gov.pl/D2020000000201.pdf",
 		},
 		{act: Item{
-			Pos:   241, Nr: 41,
+			Pos: 241, Nr: 41,
 			Title: "Protokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.", Year: 1973},
 			want: "Dz.U. 1973 poz. 241\nProtokół w sprawie zmiany Umowy o rozliczeniach wielostronnych w rublach transferowych i o utworzeniu Międzynarodowego Banku Współpracy Gospodarczej oraz Statutu tego Banku, sporządzony w Moskwie dnia 18 grudnia 1970 r.\nhttps://dziennikustaw.gov.pl/D1973041024101.pdf",
 		},
@@ -46,7 +50,7 @@ func Test_prepareTweet(t *testing.T) {
 		tt := tt
 		t.Run(tt.act.Title, func(t *testing.T) {
 			t.Parallel()
-			if got := prepareTweet(tt.act.Year,  tt.act.Nr, tt.act.Pos, tt.act.Title); got != tt.want {
+			if got := prepareTweet(tt.act.Year, tt.act.Nr, tt.act.Pos, tt.act.Title); got != tt.want {
 				t.Errorf("prepareTweet() = \n%v, want \n%v", got, tt.want)
 			}
 		})
@@ -218,10 +222,14 @@ func Test_getTitleFromPage(t *testing.T) {
 }
 
 func Test_convertPDFToPng(t *testing.T) {
-	t.Skip("There is an intergration test for that")
 	t.Parallel()
 	file, _ := os.Open("testdata/D2020000000101.pdf")
-	out, err := convertPDFToJpgs(file)
+	doc, err := fitz.NewFromReader(file)
+	if err != nil {
+		t.Errorf("NewFromReader() error = %v", err)
+	}
+	defer doc.Close()
+	out, err := convertPDFToJpgs(doc)
 	if err != nil {
 		t.Errorf("Got %v", err)
 	}
@@ -230,9 +238,49 @@ func Test_convertPDFToPng(t *testing.T) {
 	}
 }
 
+func Test_convertPDFToText(t *testing.T) {
+	t.Parallel()
+	file, _ := os.Open("testdata/D2020000000101.pdf")
+	doc, err := fitz.NewFromReader(file)
+	if err != nil {
+		t.Errorf("NewFromReader() error = %v", err)
+	}
+	defer doc.Close()
+	out, err := getPDFText(doc)
+	if err != nil {
+		t.Errorf("Got %v", err)
+	}
+	if !strings.Contains(out, "kod CN oraz opis towaru;") {
+		t.Errorf("Got %v", out)
+	}
+}
+
+func Test_Summary(t *testing.T) {
+	t.Skip("")
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		t.Skip("Open_API_KEY not set")
+	}
+	t.Parallel()
+	file, _ := os.Open("testdata/D2020000000101.pdf")
+	doc, err := fitz.NewFromReader(file)
+	if err != nil {
+		t.Errorf("NewFromReader() error = %v", err)
+	}
+	defer doc.Close()
+	out, err := getPDFText(doc)
+	if err != nil {
+		t.Errorf("Got %v", err)
+	}
+	s, err := getTweetSummary(context.Background(), out)
+	if err != nil {
+		t.Errorf("Got %v", err)
+	}
+	t.Errorf("Got %v", s)
+}
+
 func TestIntegrationGetTweetText(t *testing.T) {
 	t.Parallel()
-	text := getTweetText(1997,78,483 )
+	text := getTweetText(1997, 78, 483)
 	e := "Dz.U. 1997 poz. 483\nKonstytucja Rzeczypospolitej Polskiej z dnia 2 kwietnia 1997 r. uchwalona przez Zgromadzenie Narodowe w dniu 2 kwietnia 1997 r., przyjęta przez Naród w referendum konstytucyjnym w dniu 25 maja 1997 r., podpisana przez …\nhttps://dziennikustaw.gov.pl/D1997078048301.pdf"
 	if text != e {
 		t.Errorf("Expected %s got %s", e, text)
@@ -241,11 +289,16 @@ func TestIntegrationGetTweetText(t *testing.T) {
 
 func TestIntegrationgetPDF(t *testing.T) {
 	t.Parallel()
-	r, err := getPDF(2020,0,2267 )
+	r, err := getPDF(2020, 0, 2267)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pages, err := convertPDFToJpgs(r.Body)
+	doc, err := fitz.NewFromReader(r.Body)
+	if err != nil {
+		t.Errorf("NewFromReader() error = %v", err)
+	}
+	defer doc.Close()
+	pages, err := convertPDFToJpgs(doc)
 	if len(pages) != 1 {
 		t.Errorf("expected pages %d but got %d", 1, len(pages))
 	}
@@ -253,4 +306,3 @@ func TestIntegrationgetPDF(t *testing.T) {
 		t.Error(err)
 	}
 }
-
