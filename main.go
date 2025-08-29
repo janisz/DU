@@ -25,6 +25,8 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/gen2brain/go-fitz"
+
+	"github.com/openai/openai-go/v2"
 )
 
 const url = "https://dziennikustaw.gov.pl"
@@ -57,7 +59,7 @@ func main() {
 		Host:       "https://api.twitter.com",
 	}
 	oldClient := oldApi.NewClient(httpClient)
-	newActs, err := prepareNewActs(oldClient)
+	newActs, summaries, err := prepareNewActs(oldClient)
 	if err != nil {
 		log.WithError(err).Fatal("Could not prepare new acts")
 	}
@@ -65,9 +67,10 @@ func main() {
 	log.WithField("NewActs", len(newActs)).Info("Publishing tweets")
 	if _, ok := os.LookupEnv("DRY"); ok {
 		log.Warn("DRY RUN")
+		log.Debug(strings.Join(summaries, "\n"))
 		return
 	}
-	for _, tw := range append(newActs) {
+	for i, tw := range append(newActs) {
 		t, err := client.CreateTweet(ctx, tw)
 		if err != nil {
 			log.WithError(err).Fatal("Could not publish tweet")
@@ -77,11 +80,31 @@ func main() {
 		if err != nil {
 			log.WithError(err).Fatal("Could save published tweet")
 		}
+
+		if summaries[i] != "" {
+			warsaw := "535f0c2de0121451"
+			summary := twitter.CreateTweetRequest{
+				ForSuperFollowersOnly: false,
+				Reply: &twitter.CreateTweetReply{
+					InReplyToTweetID: t.Tweet.ID,
+				},
+				Text: summaries[i],
+				Geo: &twitter.CreateTweetGeo{
+					PlaceID: warsaw,
+				},
+			}
+			s, err := client.CreateTweet(ctx, summary)
+			if err != nil {
+				log.WithError(err).Error("Could not publish tweet summary")
+			}
+			log.WithFields(logLimit(t.RateLimit)).WithField("Text", s.Tweet.Text).Info("Published")
+		}
+
 	}
 
 }
 
-func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
+func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []string, error) {
 	lastTweetedYear, lastTweetedId := getLastId()
 	if lastTweetedYear*lastTweetedId == 0 {
 		log.WithField("Year", lastTweetedYear).WithField("Pos", lastTweetedId).Fatal("There is a problem with obtaining last tweeted act")
@@ -94,7 +117,8 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
 	var newActs []twitter.CreateTweetRequest
-	for i:=0;i<5;i++ {
+	var summaries []string
+	for i := 0; i < 5; i++ {
 		lastTweetedId++
 
 		tweetText := getTweetText(year, 0, lastTweetedId)
@@ -102,10 +126,31 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
 			log.WithField("Year", year).WithField("Pos", lastTweetedId).Info("No data")
 			break
 		}
-		mediaIds, err := uploadImages(year, 0, lastTweetedId, old)
+		r, err := getPDF(year, 0, lastTweetedId)
 		if err != nil {
-			return nil, fmt.Errorf("could not upload images: %w", err)
+			return nil, nil, err
 		}
+		defer r.Body.Close()
+		doc, err := fitz.NewFromReader(r.Body)
+		if err != nil {
+			return nil, nil, err
+		}
+		defer doc.Close()
+
+		mediaIds, err := uploadImages(doc, old)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not upload images: %w", err)
+		}
+
+		text, err := getPDFText(doc)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not get pdf text: %w", err)
+		}
+		summary, err := getTweetSummary(context.Background(), text)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not get tweet summary: %w", err)
+		}
+		summaries = append(summaries, summary)
 
 		log.WithField("Text", tweetText).Info("Prepared")
 		var media *twitter.CreateTweetMedia
@@ -124,7 +169,12 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, error) {
 			},
 		})
 	}
-	return newActs, nil
+
+	if len(newActs) != len(summaries) {
+		return nil, nil, fmt.Errorf("could not create new acts, length mismatch")
+	}
+
+	return newActs, summaries, nil
 }
 
 var client = &http.Client{Transport: &http.Transport{
@@ -164,13 +214,31 @@ func getTweetText(year, nr, pos int) string {
 	return prepareTweet(year, nr, pos, title)
 }
 
-func uploadImages(year, nr, pos int, client *oldApi.Client) ([]string, error) {
-	r, err := getPDF(year, nr, pos)
+func getTweetSummary(ctx context.Context, text string) (string, error) {
+	client := openai.NewClient()
+	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+		Messages: []openai.ChatCompletionMessageParamUnion{
+			openai.SystemMessage(`Jesteś pracownikiem Rządowego Centrum Legislacji.
+Twoim zadaniem jest tworzenie tweetów o najnowszych publikacjach w Dzienniku Ustaw.
+Zawsze podsumowuj zmiany w ustawach (na podstawie tekstu) w formie jednego tweeta (maks. 280 znaków).
+Używaj potocznego języka, unikaj urzędowego stylu.
+Wyróżnij najważniejszą zmianę i – jeśli pasuje – dodaj krótkie hashtagi lub użyj ich w tekście.
+Skupiaj się na praktycznym znaczeniu dla obywateli i przedsiębiorców.
+Nie dodawaj infromacji takich jak data, pozycja, autor czy organ.
+Ważne jest tylko co się zmienia.`),
+			openai.UserMessage(text),
+		},
+		Model: openai.ChatModelGPT5Nano,
+	})
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	defer r.Body.Close()
-	pages, err := convertPDFToJpgs(r.Body)
+	return chatCompletion.Choices[0].Message.Content, nil
+}
+
+func uploadImages(doc *fitz.Document, client *oldApi.Client) ([]string, error) {
+
+	pages, err := convertPDFToJpgs(doc)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +348,7 @@ var handles = map[string]string{
 	"Głównego Inspektora Transportu Drogowego":           "@ITD_gov",
 	"Marszałka Sejmu Rzeczypospolitej Polskiej":          "@szymon_holownia",
 	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
-	"Ministra Edukacji":                          	      "@MEN_GOVPL",
+	"Ministra Edukacji":                                  "@MEN_GOVPL",
 	"Ministra Finansów ":                                 "@MF_gov_PL ",
 	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
 	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
@@ -371,13 +439,21 @@ func getIdFromTweet(s string) (year, id int) {
 	return year, id
 }
 
-func convertPDFToJpgs(pdf io.Reader) ([][]byte, error) {
-	doc, err := fitz.NewFromReader(pdf)
-	if err != nil {
-		return nil, err
-	}
-	defer doc.Close()
+func getPDFText(doc *fitz.Document) (string, error) {
+	log.Debug("Pages: ", doc.NumPage())
 
+	builder := strings.Builder{}
+	for n := 0; n < doc.NumPage(); n++ {
+		text, err := doc.Text(n)
+		if err != nil {
+			return "", err
+		}
+		builder.WriteString(text)
+	}
+	return builder.String(), nil
+}
+
+func convertPDFToJpgs(doc *fitz.Document) ([][]byte, error) {
 	log.Debug("Pages: ", doc.NumPage())
 	if doc.NumPage() > 4 {
 		return nil, nil
