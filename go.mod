@@ -12,7 +12,7 @@ require (
 	github.com/gen2brain/go-fitz v1.24.15
 	github.com/openai/openai-go/v2 v2.1.1
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.42.0
+	golang.org/x/net v0.43.0
 )
 
 require (
@@ -25,5 +25,5 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 )
