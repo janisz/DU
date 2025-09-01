@@ -85,7 +85,8 @@ func main() {
 
 		summary, err := summaries[i]()
 		if err != nil {
-			log.WithField("summary", summary).WithError(err).Error("Could not publish tweet summary")
+			log.WithField("summary", summary).WithError(err).Error("Could not get tweet summary")
+			continue
 		}
 
 		warsaw := "535f0c2de0121451"
@@ -101,7 +102,8 @@ func main() {
 		}
 		s, err := client.CreateTweet(ctx, summaryTweet)
 		if err != nil {
-			log.WithError(err).Error("Could not publish tweet summary")
+			log.WithField("summary", summary).WithError(err).Error("Could not publish tweet summary")
+			continue
 		}
 		log.WithFields(logLimit(t.RateLimit)).WithField("Text", s.Tweet.Text).Info("Published")
 
