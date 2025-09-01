@@ -234,7 +234,7 @@ func getTweetSummary(ctx context.Context, text string) (summary string, err erro
 }
 
 func _getTweetSummary(ctx context.Context, text string) (string, error) {
-	if checkTokenLength(text, 270000) {
+	if !checkTokenLength(text, 270000) {
 		return "", retry.Unrecoverable(errors.New("text too long"))
 	}
 	client := openai.NewClient()
