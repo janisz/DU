@@ -29,6 +29,7 @@ import (
 	"github.com/gen2brain/go-fitz"
 
 	"github.com/openai/openai-go/v2"
+	"github.com/pkoukk/tiktoken-go"
 )
 
 const url = "https://dziennikustaw.gov.pl"
@@ -69,7 +70,6 @@ func main() {
 	log.WithField("NewActs", len(newActs)).Info("Publishing tweets")
 	if _, ok := os.LookupEnv("DRY"); ok {
 		log.Warn("DRY RUN")
-		log.Debug(strings.Join(summaries, "\n"))
 		return
 	}
 	for i, tw := range append(newActs) {
@@ -83,30 +83,33 @@ func main() {
 			log.WithError(err).Fatal("Could save published tweet")
 		}
 
-		if summaries[i] != "" {
-			warsaw := "535f0c2de0121451"
-			summary := twitter.CreateTweetRequest{
-				ForSuperFollowersOnly: false,
-				Reply: &twitter.CreateTweetReply{
-					InReplyToTweetID: t.Tweet.ID,
-				},
-				Text: summaries[i],
-				Geo: &twitter.CreateTweetGeo{
-					PlaceID: warsaw,
-				},
-			}
-			s, err := client.CreateTweet(ctx, summary)
-			if err != nil {
-				log.WithError(err).Error("Could not publish tweet summary")
-			}
-			log.WithFields(logLimit(t.RateLimit)).WithField("Text", s.Tweet.Text).Info("Published")
+		summary, err := summaries[i]()
+		if err != nil {
+			log.WithField("summary", summary).WithError(err).Error("Could not publish tweet summary")
 		}
+
+		warsaw := "535f0c2de0121451"
+		summaryTweet := twitter.CreateTweetRequest{
+			ForSuperFollowersOnly: false,
+			Reply: &twitter.CreateTweetReply{
+				InReplyToTweetID: t.Tweet.ID,
+			},
+			Text: summary,
+			Geo: &twitter.CreateTweetGeo{
+				PlaceID: warsaw,
+			},
+		}
+		s, err := client.CreateTweet(ctx, summaryTweet)
+		if err != nil {
+			log.WithError(err).Error("Could not publish tweet summary")
+		}
+		log.WithFields(logLimit(t.RateLimit)).WithField("Text", s.Tweet.Text).Info("Published")
 
 	}
 
 }
 
-func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []string, error) {
+func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []func() (string, error), error) {
 	lastTweetedYear, lastTweetedId := getLastId()
 	if lastTweetedYear*lastTweetedId == 0 {
 		log.WithField("Year", lastTweetedYear).WithField("Pos", lastTweetedId).Fatal("There is a problem with obtaining last tweeted act")
@@ -119,7 +122,7 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []string,
 	log.WithField("Current Year", year).Infof("Last tweeted act Dz.U %d pos %d", lastTweetedYear, lastTweetedId)
 
 	var newActs []twitter.CreateTweetRequest
-	var summaries []string
+	var summaries []func() (string, error)
 	for i := 0; i < 5; i++ {
 		lastTweetedId++
 
@@ -148,10 +151,7 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []string,
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not get pdf text: %w", err)
 		}
-		summary, err := getTweetSummary(context.Background(), text)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not get tweet summary: %w", err)
-		}
+		summary := func() (string, error) { return getTweetSummary(context.Background(), text) }
 		summaries = append(summaries, summary)
 
 		log.WithField("Text", tweetText).Info("Prepared")
@@ -232,6 +232,9 @@ func getTweetSummary(ctx context.Context, text string) (summary string, err erro
 }
 
 func _getTweetSummary(ctx context.Context, text string) (string, error) {
+	if checkTokenLength(text, 270000) {
+		return "", retry.Unrecoverable(errors.New("text too long"))
+	}
 	client := openai.NewClient()
 	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
@@ -248,6 +251,20 @@ func _getTweetSummary(ctx context.Context, text string) (string, error) {
 		return content, errors.New("too many characters")
 	}
 	return content, nil
+}
+
+func checkTokenLength(text string, maxTokens int) bool {
+	// Load encoding (use cl100k_base, same as GPT-4/5 models)
+	enc, err := tiktoken.GetEncoding("cl100k_base")
+	if err != nil {
+		log.Fatalf("failed to load encoding: %v", err)
+	}
+
+	// Encode text into tokens
+	tokens := enc.Encode(text, nil, nil)
+
+	// Compare length
+	return len(tokens) <= maxTokens
 }
 
 func uploadImages(doc *fitz.Document, client *oldApi.Client) ([]string, error) {

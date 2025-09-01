@@ -306,3 +306,15 @@ func TestIntegrationgetPDF(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestCheckTokenLenght(t *testing.T) {
+	t.Parallel()
+	ok := checkTokenLength(prompt, 300)
+	if !ok {
+		t.Errorf("Token length check failed")
+	}
+	ok = checkTokenLength(prompt, 30)
+	if ok {
+		t.Errorf("Token length check failed")
+	}
+}
