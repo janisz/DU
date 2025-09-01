@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"errors"
 	"fmt"
 	"image/jpeg"
 	"io"
@@ -218,7 +219,19 @@ func getTweetText(year, nr, pos int) string {
 //go:embed prompt.txt
 var prompt string
 
-func getTweetSummary(ctx context.Context, text string) (string, error) {
+func getTweetSummary(ctx context.Context, text string) (summary string, err error) {
+	err = retry.Do(func() error {
+		summary, err = _getTweetSummary(ctx, text)
+		return err
+	}, retry.Context(ctx),
+		retry.Attempts(3),
+		retry.OnRetry(func(n uint, err error) {
+			log.WithField("retry", n).WithField("summary", summary).WithField("len", len(summary)).WithError(err).Warn("retry")
+		}))
+	return summary, err
+}
+
+func _getTweetSummary(ctx context.Context, text string) (string, error) {
 	client := openai.NewClient()
 	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
 		Messages: []openai.ChatCompletionMessageParamUnion{
@@ -230,7 +243,11 @@ func getTweetSummary(ctx context.Context, text string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return chatCompletion.Choices[0].Message.Content, nil
+	content := chatCompletion.Choices[0].Message.Content
+	if len(content) >= 280 {
+		return content, errors.New("too many characters")
+	}
+	return content, nil
 }
 
 func uploadImages(doc *fitz.Document, client *oldApi.Client) ([]string, error) {

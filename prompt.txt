@@ -6,3 +6,4 @@ Wyróżnij najważniejszą zmianę i – jeśli pasuje – dodaj krótkie hashta
 Skupiaj się na praktycznym znaczeniu dla obywateli i przedsiębiorców.
 Nie dodawaj infromacji takich jak data, pozycja, autor czy organ.
 Ważne jest tylko co się zmienia.
+Pamiętaj o limicie długośći 280 znaków.
