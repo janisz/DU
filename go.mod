@@ -6,6 +6,7 @@ replace github.com/dghubble/go-twitter => github.com/janisz/go-twitter v0.0.0-20
 
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dghubble/go-twitter v0.0.0-00010101000000-000000000000
 	github.com/dghubble/oauth1 v0.7.3
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
