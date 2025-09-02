@@ -125,7 +125,7 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []func() 
 
 	var newActs []twitter.CreateTweetRequest
 	var summaries []func() (string, error)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
 		lastTweetedId++
 
 		tweetText := getTweetText(year, 0, lastTweetedId)
