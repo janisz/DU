@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	oldApi "github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 	"github.com/g8rswimmer/go-twitter/v2"
@@ -63,12 +62,6 @@ func main() {
 		Host:       "https://api.twitter.com",
 	}
 	oldClient := oldApi.NewClient(httpClient)
-
-	if status, _, err := oldClient.RateLimits.Status(nil); err != nil {
-		log.WithError(err).Fatal("Failed to get rate limits")
-	} else {
-		log.Info(spew.Sdump(status.Resources))
-	}
 
 	newActs, summaries, err := prepareNewActs(oldClient)
 	if err != nil {
@@ -133,7 +126,7 @@ func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []func() 
 
 	var newActs []twitter.CreateTweetRequest
 	var summaries []func() (string, error)
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 1; i++ {
 		lastTweetedId++
 
 		tweetText := getTweetText(year, 0, lastTweetedId)
