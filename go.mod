@@ -11,7 +11,7 @@ require (
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
 	github.com/gen2brain/go-fitz v1.24.15
 	github.com/openai/openai-go/v2 v2.1.1
-	github.com/pkoukk/tiktoken-go v0.1.7
+	github.com/pkoukk/tiktoken-go v0.1.8
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/net v0.43.0
 )
