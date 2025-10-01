@@ -1,6 +1,6 @@
 module github.com/janisz/DU
 
-go 1.23.0
+go 1.24.0
 
 replace github.com/dghubble/go-twitter => github.com/janisz/go-twitter v0.0.0-20201206102041-3fe237ed29f3
 
@@ -13,7 +13,7 @@ require (
 	github.com/openai/openai-go/v2 v2.1.1
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.43.0
+	golang.org/x/net v0.44.0
 )
 
 require (
@@ -28,5 +28,5 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
 )
