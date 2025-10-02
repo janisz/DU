@@ -117,10 +117,7 @@ func main() {
 }
 
 func retweets(client *twitter.Client, ctx context.Context) error {
-	search, err := client.TweetRecentSearch(ctx, `"Dzienniku Ustaw" min_faves:10 lang:pl`, twitter.TweetRecentSearchOpts{
-		SortOrder:  twitter.TweetSearchSortOrderRecency,
-		MaxResults: 1,
-	})
+	search, err := client.TweetRecentSearch(ctx, `"Dzienniku Ustaw" min_faves:10 lang:pl`, twitter.TweetRecentSearchOpts{})
 	if err != nil {
 		return err
 	}
