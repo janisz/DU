@@ -63,6 +63,10 @@ func main() {
 	}
 	oldClient := oldApi.NewClient(httpClient)
 
+	if err := retweets(client, ctx); err != nil {
+		log.WithError(err).Warn("Failed handle retweets")
+	}
+
 	newActs, summaries, err := prepareNewActs(oldClient)
 	if err != nil {
 		log.WithError(err).Fatal("Could not prepare new acts")
@@ -110,6 +114,23 @@ func main() {
 
 	}
 
+}
+
+func retweets(client *twitter.Client, ctx context.Context) error {
+	search, err := client.TweetRecentSearch(ctx, `"Dzienniku Ustaw" min_faves:10 lang:pl`, twitter.TweetRecentSearchOpts{
+		SortOrder:  twitter.TweetSearchSortOrderRecency,
+		MaxResults: 1,
+	})
+	if err != nil {
+		return err
+	}
+	for _, t := range search.Raw.Tweets {
+		if _, err := client.UserRetweet(ctx, userID, t.ID); err != nil {
+			return err
+		}
+		log.WithField("Body", t.Text).Info("Retweeted")
+	}
+	return nil
 }
 
 func prepareNewActs(old *oldApi.Client) ([]twitter.CreateTweetRequest, []func() (string, error), error) {
