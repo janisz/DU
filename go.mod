@@ -13,7 +13,7 @@ require (
 	github.com/openai/openai-go/v2 v2.1.1
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/sirupsen/logrus v1.9.3
-	golang.org/x/net v0.46.0
+	golang.org/x/net v0.47.0
 )
 
 require (
@@ -28,5 +28,5 @@ require (
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
-	golang.org/x/sys v0.37.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 )
