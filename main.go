@@ -241,8 +241,16 @@ func getTweetText(year, nr, pos int) string {
 var prompt string
 
 func getTweetSummary(ctx context.Context, text string) (summary string, err error) {
+	if !checkTokenLength(text, 270000) {
+		return "", retry.Unrecoverable(errors.New("text too long"))
+	}
+
+	var messages []openai.ChatCompletionMessageParamUnion
+	messages = append(messages, openai.SystemMessage(prompt))
+	messages = append(messages, openai.UserMessage(text))
+
 	err = retry.Do(func() error {
-		summary, err = _getTweetSummary(ctx, text)
+		summary, messages, err = _getTweetSummary(ctx, messages)
 		return err
 	}, retry.Context(ctx),
 		retry.Attempts(3),
@@ -252,26 +260,24 @@ func getTweetSummary(ctx context.Context, text string) (summary string, err erro
 	return summary, err
 }
 
-func _getTweetSummary(ctx context.Context, text string) (string, error) {
-	if !checkTokenLength(text, 270000) {
-		return "", retry.Unrecoverable(errors.New("text too long"))
-	}
+func _getTweetSummary(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion) (string, []openai.ChatCompletionMessageParamUnion, error) {
 	client := openai.NewClient()
 	chatCompletion, err := client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
-		Messages: []openai.ChatCompletionMessageParamUnion{
-			openai.SystemMessage(prompt),
-			openai.UserMessage(text),
-		},
-		Model: openai.ChatModelGPT5Nano,
+		Messages: messages,
+		Model:    openai.ChatModelGPT5Nano,
 	})
 	if err != nil {
-		return "", err
+		return "", messages, err
 	}
 	content := chatCompletion.Choices[0].Message.Content
+
 	if len(content) >= 280 {
-		return content, errors.New("too many characters")
+		// Add the assistant's response and feedback to maintain conversation history
+		messages = append(messages, openai.AssistantMessage(content))
+		messages = append(messages, openai.UserMessage(fmt.Sprintf("To jest %d znaków - za dużo! Skróć do maksymalnie 279 znaków. Usuń niepotrzebne słowa, skróć zdania, ale zachowaj najważniejszą informację.", len(content))))
+		return content, messages, errors.New("too many characters")
 	}
-	return content, nil
+	return content, messages, nil
 }
 
 func checkTokenLength(text string, maxTokens int) bool {
