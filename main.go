@@ -404,7 +404,7 @@ var handles = map[string]string{
 	"Marszałka Sejmu Rzeczypospolitej Polskiej":          "@wlodekczarzasty",
 	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
 	"Ministra Edukacji":                                  "@MEN_GOVPL",
-	"Ministra Finansów":                                  "@MF_gov_PL",
+	"Ministra Finansów ":                                  "@MF_gov_PL ",
 	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
 	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
 	"Ministra Infrastruktury":                            "@MI_GOV_PL",

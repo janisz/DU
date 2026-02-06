@@ -26,7 +26,7 @@ func Test_prepareTweet(t *testing.T) {
 			Pos:   100,
 			Title: "Rozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej",
 			Year:  2020},
-			want: "Dz.U. 2020 poz. 💯\nRozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej\nhttps://dziennikustaw.gov.pl/D2020000010001.pdf",
+			want: "Dz.U. 2020 poz. 100\nRozporządzenie @MF_gov_PLN z dnia 31 grudnia 2019 r. w sprawie postępowania kwalifikacyjnego w stosunku do kandydatów ubiegających się o przyjęcie do służby w Służbie Celno-Skarbowej\nhttps://dziennikustaw.gov.pl/D2020000010001.pdf",
 		},
 		{act: Item{
 			Pos:   2,
@@ -73,7 +73,7 @@ func Test_trimTweet(t *testing.T) {
 		},
 		{
 			title: "Obwieszczenie Ministra Zdrowia z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia Ministra Zdrowia w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych zawierających grzyby oraz uprawnień klasyfikatora grzybów i grzyboznawcy",
-			want:  "📢Obwieszczenie @MZ_gov_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_gov_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych …",
+			want:  "📢Obwieszczenie @MZ_GOV_PL z dnia 21 maja 2020 r. w sprawie ogłoszenia jednolitego tekstu rozporządzenia @MZ_GOV_PL w sprawie grzybów dopuszczonych do obrotu lub produkcji przetworów grzybowych, środków spożywczych …",
 		},
 	}
 	for _, tt := range tests {
