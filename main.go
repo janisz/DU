@@ -385,9 +385,6 @@ func getTitleFromPage(body io.ReadCloser) string {
 
 func prepareTweet(year, nr, id int, title string) string {
 	poz := fmt.Sprintf("%d", id)
-	if id == 100 {
-		poz = "💯"
-	}
 	return strings.Join([]string{
 		fmt.Sprintf("Dz.U. %d poz. %s", year, poz), // 22 chars (Dz.U. YYYY poz. XXXX\n)
 		trimTitle(title),     // < 280-22-23 ~ 230 (1 for new line)
@@ -404,35 +401,35 @@ var handles = map[string]string{
 	"Centralnego Biura Antykorupcyjnego":                 "@CBAgovPL",
 	"Centralnym Biurze Antykorupcyjnym":                  "@CBAgovPL",
 	"Głównego Inspektora Transportu Drogowego":           "@ITD_gov",
-	"Marszałka Sejmu Rzeczypospolitej Polskiej":          "@szymon_holownia",
+	"Marszałka Sejmu Rzeczypospolitej Polskiej":          "@wlodekczarzasty",
 	"Ministra Aktywów Państwowych":                       "@MAPgovPL",
 	"Ministra Edukacji":                                  "@MEN_GOVPL",
-	"Ministra Finansów ":                                 "@MF_gov_PL ",
+	"Ministra Finansów":                                  "@MF_gov_PL",
 	"Ministra Finansów, Funduszy i Polityki Regionalnej": "@MF_gov_PL",
 	"Ministra Funduszy i Polityki Regionalnej":           "@MFiPR_gov_PL",
-	"Ministra Infrastruktury":                            "@MI_gov_PL",
+	"Ministra Infrastruktury":                            "@MI_GOV_PL",
 	"Ministra Klimatu i Środowiska":                      "@MKiS_gov_PL",
 	"Ministra Klimatu":                                   "@MKiS_gov_PL",
 	"Ministra Kultury i Dziedzictwa Narodowego":          "@kultura_gov_pl",
 	"Ministra Kultury, Dziedzictwa Narodowego i Sportu":  "@kultura_gov_pl",
-	"Ministra Nauki i Szkolnictwa Wyższego":              "@MEIN_gov_PL",
-	"Ministra Obrony Narodowej":                          "@MON_gov_PL",
-	"Ministra Rodziny i Polityki Społecznej":             "@MRiPS_gov_PL",
+	"Ministra Nauki i Szkolnictwa Wyższego":              "@MEiN_gov_PL", // historycznie MEiN; obecnie rozdział na MEN i MNiSW [web:3][web:5]
+	"Ministra Obrony Narodowej":                          "@MON_GOV_PL",
+	"Ministra Rodziny i Polityki Społecznej":             "@MRiPS_gov_PL", // nazwa historyczna; obecnie „Ministra Rodziny, Pracy i Polityki Społecznej” [web:3][web:5][web:8]
 	"Ministra Rodziny, Pracy i Polityki Społecznej":      "@MRiPS_gov_PL",
 	"Ministra Rolnictwa i Rozwoju Wsi":                   "@MRiRW_gov_PL",
 	"Ministra Rozwoju i Technologii":                     "@MRiTGOVPL",
 	"Ministra Rozwoju, Pracy i Technologii":              "@MRiTGOVPL",
-	"Ministra Sportu":                                    "@Sport_gov_PL",
-	"Ministra Spraw Wewnętrznych i Administracji":        "@MSWiA_gov_PL",
+	"Ministra Sportu":                                    "@sport_gov_pl",
+	"Ministra Spraw Wewnętrznych i Administracji":        "@MSWiA_GOV_PL",
 	"Ministra Spraw Zagranicznych":                       "@MSZ_RP",
-	"Ministra Sprawiedliwości":                           "@MS_gov_PL",
-	"Ministra Zdrowia":                                   "@MZ_gov_PL",
+	"Ministra Sprawiedliwości":                           "@MS_GOV_PL",
+	"Ministra Zdrowia":                                   "@MZ_GOV_PL",
 	"Państwowej Komisji Wyborczej":                       "@PanstwKomWyb",
 	"Państwowej Straży Pożarnej":                         "@KGPSP",
 	"Prezesa Rady Ministrów":                             "@PremierRP",
-	"Prezydenta Rzeczypospolitej Polskiej":               "@PrezydentPL",
+	"Prezydenta Rzeczypospolitej Polskiej":               "@prezydentpl", // oficjalne konto Prezydenta RP
 	"Straży Granicznej":                                  "@Straz_Graniczna",
-	"Trybunału Konstytucyjnego":                          "@TK_gov_PL",
+	"Trybunału Konstytucyjnego":                          "@TK_GOV_PL",
 }
 
 var emojis = map[string]string{
