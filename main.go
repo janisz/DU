@@ -67,6 +67,10 @@ func main() {
 		log.WithError(err).Warn("Failed handle retweets")
 	}
 
+	if err := likeTweets(client, ctx); err != nil {
+		log.WithError(err).Warn("Failed handle likes")
+	}
+
 	newActs, summaries, err := prepareNewActs(oldClient)
 	if err != nil {
 		log.WithError(err).Fatal("Could not prepare new acts")
@@ -127,6 +131,52 @@ func retweets(client *twitter.Client, ctx context.Context) error {
 		}
 		log.WithField("Body", t.Text).Info("Retweeted")
 	}
+	return nil
+}
+
+func likeTweets(client *twitter.Client, ctx context.Context) error {
+	// Search for tweets from the last hour
+	startTime := time.Now().Add(-1 * time.Hour)
+
+	// Combine all keywords into a single query using OR
+	// Based on the old implementation, excluding "Dz.U." (too many false positives)
+	query := `-from:DzUstaw (#DziennikUstaw OR "Dziennik Ustaw" OR "Dzienniku Ustaw" OR "Dziennika Ustaw" OR "Dziennikiem Ustaw" OR "Dziennikowi Ustaw") lang:pl`
+
+	log.Debug("Searching for tweets to like")
+
+	search, err := client.TweetRecentSearch(ctx, query, twitter.TweetRecentSearchOpts{
+		StartTime:  startTime,
+		MaxResults: 10,
+		SortOrder:  twitter.TweetSearchSortOrderRecency,
+	})
+	if err != nil {
+		return fmt.Errorf("could not search tweets: %w", err)
+	}
+
+	if search.Raw == nil || len(search.Raw.Tweets) == 0 {
+		log.Info("No tweets found to like")
+		return nil
+	}
+
+	log.Infof("Found %d tweets to like", len(search.Raw.Tweets))
+
+	for _, tweet := range search.Raw.Tweets {
+		log.WithField("ID", tweet.ID).WithField("Text", tweet.Text).Info("Liking tweet")
+
+		if _, ok := os.LookupEnv("DRY"); ok {
+			log.Warn("DRY RUN - not actually liking")
+			continue
+		}
+
+		_, err := client.UserLikes(ctx, userID, tweet.ID)
+		if err != nil {
+			log.WithField("ID", tweet.ID).WithError(err).Error("Could not like tweet 💔")
+			continue
+		}
+
+		log.WithField("ID", tweet.ID).Info("Liked tweet ❤")
+	}
+
 	return nil
 }
 
