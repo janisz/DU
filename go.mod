@@ -9,7 +9,7 @@ require (
 	github.com/dghubble/go-twitter v0.0.0-00010101000000-000000000000
 	github.com/dghubble/oauth1 v0.7.3
 	github.com/g8rswimmer/go-twitter/v2 v2.1.5
-	github.com/gen2brain/go-fitz v1.28.1
+	github.com/gen2brain/go-fitz v1.28.2
 	github.com/openai/openai-go/v2 v2.1.1
 	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/sirupsen/logrus v1.9.4
