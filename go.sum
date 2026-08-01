@@ -15,8 +15,8 @@ github.com/ebitengine/purego v0.10.1 h1:dewVBCBT2GaMu1SrNTYxQhgQBethzfhiwvZiLGP/
 github.com/ebitengine/purego v0.10.1/go.mod h1:iIjxzd6CiRiOG0UyXP+V1+jWqUXVjPKLAI0mRfJZTmQ=
 github.com/g8rswimmer/go-twitter/v2 v2.1.5 h1:Uj9Yuof2UducrP4Xva7irnUJfB9354/VyUXKmc2D5gg=
 github.com/g8rswimmer/go-twitter/v2 v2.1.5/go.mod h1:/55xWb313KQs25X7oZrNSEwLQNkYHhPsDwFstc45vhc=
-github.com/gen2brain/go-fitz v1.28.1 h1:ToEYb2vN4ByaL2VmRNGk92Sa1UAkCn8bsObpA3WkQ48=
-github.com/gen2brain/go-fitz v1.28.1/go.mod h1:pY2hqAjp9Zy7qfPI2gwbJMHBFAdZpVXOLrRxD82l3Bs=
+github.com/gen2brain/go-fitz v1.28.2 h1:845G85N5TUgnq5oDqyYrW0JvehAkeo35UkkK2dJtW1M=
+github.com/gen2brain/go-fitz v1.28.2/go.mod h1:pY2hqAjp9Zy7qfPI2gwbJMHBFAdZpVXOLrRxD82l3Bs=
 github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASuANWTrk=
 github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO6wN/zVPAxq5ck=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
