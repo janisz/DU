@@ -12,7 +12,7 @@ require (
 	github.com/gen2brain/go-fitz v1.28.1
 	github.com/openai/openai-go/v2 v2.1.1
 	github.com/pkoukk/tiktoken-go v0.1.7
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.2
 	golang.org/x/net v0.56.0
 )
 
